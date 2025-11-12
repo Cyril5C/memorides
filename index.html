@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Rides - Traces GPX & Photos</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>📍 Mes Rides</h1>
+            <p>Gérez vos traces GPX de rando et vélo avec photos géotaggées</p>
+        </header>
+
+        <!-- Controls Panel -->
+        <div class="controls">
+            <div class="upload-section">
+                <label class="btn btn-primary">
+                    <input type="file" id="gpxUpload" accept=".gpx" multiple hidden>
+                    Importer GPX
+                </label>
+                <label class="btn btn-secondary">
+                    <input type="file" id="photoUpload" accept="image/*" multiple hidden>
+                    Ajouter Photos
+                </label>
+            </div>
+
+            <div class="filters">
+                <select id="activityFilter">
+                    <option value="all">Toutes les activités</option>
+                    <option value="hiking">Randonnée</option>
+                    <option value="cycling">Vélo</option>
+                </select>
+                <button class="btn btn-danger" id="clearAll">Tout effacer</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar with tracks list -->
+            <aside class="sidebar">
+                <h2>Traces</h2>
+                <div id="tracksList" class="tracks-list">
+                    <p class="empty-state">Aucune trace importée</p>
+                </div>
+
+                <h2>Photos</h2>
+                <div id="photosList" class="photos-list">
+                    <p class="empty-state">Aucune photo importée</p>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <div class="map-container">
+                <div id="map"></div>
+                <div id="trackInfo" class="track-info hidden">
+                    <h3 id="trackName"></h3>
+                    <div class="track-stats">
+                        <div class="stat">
+                            <span class="label">Distance:</span>
+                            <span id="trackDistance">-</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Dénivelé:</span>
+                            <span id="trackElevation">-</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Durée:</span>
+                            <span id="trackDuration">-</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-small" id="closeTrackInfo">×</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div id="photoModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal">×</button>
+            <img id="modalImage" src="" alt="">
+            <div class="modal-info">
+                <h3 id="modalPhotoName"></h3>
+                <p id="modalPhotoLocation"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- EXIF reader for photo geotags -->
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>

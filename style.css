@@ -1,0 +1,588 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #10b981;
+    --danger-color: #ef4444;
+    --bg-color: #f8fafc;
+    --sidebar-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow: hidden;
+}
+
+.container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header - Mobile First */
+header {
+    background: linear-gradient(135deg, var(--primary-color), #1d4ed8);
+    color: white;
+    padding: 1rem;
+    box-shadow: var(--shadow-lg);
+}
+
+header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+header p {
+    opacity: 0.9;
+    font-size: 0.85rem;
+    display: none;
+}
+
+/* Controls - Mobile First */
+.controls {
+    background: white;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filters {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Buttons - Mobile First */
+.btn {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-block;
+    text-align: center;
+    width: 100%;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:active {
+    background-color: #1d4ed8;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-secondary:active {
+    background-color: #059669;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:active {
+    background-color: #dc2626;
+}
+
+.btn-small {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    width: auto;
+}
+
+select {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+/* Main Content - Mobile First (Vertical Layout) */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar - Mobile First (Horizontal Scrollable) */
+.sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 40vh;
+    background: var(--sidebar-bg);
+    border-bottom: 2px solid var(--border-color);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+}
+
+.sidebar h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+.tracks-list,
+.photos-list {
+    margin-bottom: 1.5rem;
+}
+
+.empty-state {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* Track Item - Mobile Optimized */
+.track-item {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.track-item:active {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.track-item.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.track-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.track-item-name {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1;
+}
+
+.track-item-type {
+    font-size: 1.2rem;
+    padding: 0.25rem 0.5rem;
+    background: white;
+    border-radius: 0.5rem;
+}
+
+.track-item.active .track-item-type {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.track-item-stats {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+}
+
+.track-item-color {
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.track-item-color label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    width: 100%;
+}
+
+.track-item-color input[type="color"] {
+    width: 100%;
+    height: 40px;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.track-item-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.track-item-actions button {
+    flex: 1;
+}
+
+/* Photo Item - Mobile Optimized */
+.photo-item {
+    display: inline-block;
+    width: 70px;
+    height: 70px;
+    margin: 0.25rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.photo-item:active {
+    border-color: var(--primary-color);
+    transform: scale(0.95);
+}
+
+.photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Map Container - Mobile First */
+.map-container {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Track Info Panel - Mobile Optimized */
+.track-info {
+    position: absolute;
+    bottom: 1rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+}
+
+.track-info.hidden {
+    display: none;
+}
+
+.track-info h3 {
+    margin-bottom: 0.75rem;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    padding-right: 2rem;
+}
+
+.track-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: var(--bg-color);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.stat .label {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.track-info button {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+/* Modal - Mobile Optimized */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 1rem;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    max-width: 100%;
+    max-height: 90vh;
+    overflow: auto;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.modal-close:active {
+    background: #dc2626;
+}
+
+#modalImage {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 0.5rem;
+    display: block;
+}
+
+.modal-info {
+    margin-top: 1rem;
+}
+
+.modal-info h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.modal-info p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* Leaflet Custom Styles */
+.leaflet-popup-content-wrapper {
+    border-radius: 0.5rem;
+}
+
+.leaflet-popup-content {
+    margin: 0.75rem;
+}
+
+.leaflet-popup-content h4 {
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+/* Touch-friendly Leaflet controls on mobile */
+.leaflet-control-zoom a {
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+    font-size: 20px;
+}
+
+.leaflet-touch .leaflet-bar a {
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+}
+
+/* ==================== TABLET (min-width: 768px) ==================== */
+@media (min-width: 768px) {
+    header {
+        padding: 1.25rem 1.5rem;
+    }
+
+    header h1 {
+        font-size: 1.75rem;
+    }
+
+    header p {
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .controls {
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+    }
+
+    .upload-section {
+        flex-direction: row;
+        gap: 1rem;
+    }
+
+    .btn {
+        width: auto;
+        padding: 0.65rem 1.25rem;
+    }
+
+    select {
+        flex: initial;
+        min-width: 200px;
+    }
+
+    .main-content {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 320px;
+        max-height: none;
+        height: 100%;
+        border-right: 1px solid var(--border-color);
+        border-bottom: none;
+        padding: 1.25rem;
+    }
+
+    .sidebar h2 {
+        font-size: 1.2rem;
+    }
+
+    .track-info {
+        top: 1rem;
+        right: 1rem;
+        left: auto;
+        bottom: auto;
+        min-width: 280px;
+        max-width: 320px;
+    }
+
+    .photo-item {
+        width: 80px;
+        height: 80px;
+    }
+
+    .photo-item:hover {
+        border-color: var(--primary-color);
+        transform: scale(1.05);
+    }
+
+    .track-item:hover {
+        border-color: var(--primary-color);
+        box-shadow: var(--shadow);
+        transform: translateX(2px);
+    }
+
+    .btn-primary:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow);
+    }
+
+    .btn-secondary:hover {
+        background-color: #059669;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow);
+    }
+
+    .btn-danger:hover {
+        background-color: #dc2626;
+    }
+}
+
+/* ==================== DESKTOP (min-width: 1024px) ==================== */
+@media (min-width: 1024px) {
+    header {
+        padding: 1.5rem 2rem;
+    }
+
+    header h1 {
+        font-size: 2rem;
+    }
+
+    header p {
+        font-size: 0.95rem;
+    }
+
+    .controls {
+        padding: 1rem 2rem;
+    }
+
+    .sidebar {
+        width: 350px;
+        padding: 1.5rem;
+    }
+
+    .sidebar h2 {
+        font-size: 1.25rem;
+    }
+
+    .track-info {
+        min-width: 300px;
+        padding: 1.5rem;
+    }
+
+    .track-info h3 {
+        font-size: 1.15rem;
+    }
+
+    .modal-content {
+        padding: 2rem;
+    }
+
+    .photo-item {
+        width: 90px;
+        height: 90px;
+    }
+}
