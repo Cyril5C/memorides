@@ -40,3 +40,4 @@ docker-compose.override.yml
 # Build
 dist/
 build/
+prisma/migrations_sqlite_backup/
