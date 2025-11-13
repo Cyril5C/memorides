@@ -14,18 +14,10 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-console.log('🔌 Connecting to database...');
+console.log('🔌 Initializing database client...');
 const prisma = new PrismaClient({
     log: ['error', 'warn']
 });
-
-// Test database connection
-prisma.$connect()
-    .then(() => console.log('✅ Database connected'))
-    .catch((error) => {
-        console.error('❌ Database connection failed:', error.message);
-        process.exit(1);
-    });
 
 // Middleware
 app.use(cors());
@@ -377,9 +369,17 @@ process.on('SIGTERM', async () => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
     console.log(`📁 GPX files: ${gpxDir}`);
     console.log(`📸 Photos: ${photosDir}`);
-    console.log(`🗄️  Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+
+    // Test database connection after server is up
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        console.log('✅ Database connection verified');
+    } catch (error) {
+        console.error('⚠️  Database connection failed:', error.message);
+        console.error('Server is running but database queries will fail');
+    }
 });
