@@ -6,9 +6,26 @@ const path = require('path');
 const fs = require('fs');
 const { PrismaClient } = require('@prisma/client');
 
+console.log('🔧 Initializing server...');
+console.log('Environment:', process.env.NODE_ENV || 'development');
+console.log('PORT:', process.env.PORT || 3001);
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
-const prisma = new PrismaClient();
+
+console.log('🔌 Connecting to database...');
+const prisma = new PrismaClient({
+    log: ['error', 'warn']
+});
+
+// Test database connection
+prisma.$connect()
+    .then(() => console.log('✅ Database connected'))
+    .catch((error) => {
+        console.error('❌ Database connection failed:', error.message);
+        process.exit(1);
+    });
 
 // Middleware
 app.use(cors());
