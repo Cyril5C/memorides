@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 echo "========================================="
 echo "MesRides - Starting application"
@@ -14,18 +13,17 @@ echo "Step 1: Setting up database..."
 
 # Try normal migration first
 echo "Attempting migration deployment..."
-node migrate.js
-
-# If migration fails, try database reset (one-time fix for migration conflicts)
-if [ $? -ne 0 ]; then
-    echo "Migration failed, attempting database reset..."
-    node reset-db.js
-fi
-
-if [ $? -eq 0 ]; then
-    echo "Step 3: Starting server..."
-    node server.js
+if node migrate.js; then
+    echo "✅ Migration successful"
 else
-    echo "ERROR: Migrations failed, aborting startup"
-    exit 1
+    echo "⚠️  Migration failed, attempting database reset..."
+    if node reset-db.js; then
+        echo "✅ Database reset successful"
+    else
+        echo "❌ Database setup failed completely"
+        exit 1
+    fi
 fi
+
+echo "Step 2: Starting server..."
+exec node server.js
