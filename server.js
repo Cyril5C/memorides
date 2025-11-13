@@ -61,13 +61,15 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
         }
 
         // Extract metadata from request body
-        const { name, type, color, distance, elevation, duration } = req.body;
+        const { name, title, comments, type, color, distance, elevation, duration } = req.body;
 
         // Save to database
         const track = await prisma.track.create({
             data: {
                 filename: req.file.filename,
                 name: name || req.file.originalname.replace('.gpx', ''),
+                title: title || null,
+                comments: comments || null,
                 type: type || 'hiking',
                 color: color || '#2563eb',
                 distance: parseFloat(distance) || 0,
@@ -100,18 +102,70 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
 app.patch('/api/gpx/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        const { name, type, color } = req.body;
+        const { name, title, comments, labels, type, color } = req.body;
 
+        // First, get the track to get its ID
+        const existingTrack = await prisma.track.findUnique({
+            where: { filename }
+        });
+
+        if (!existingTrack) {
+            return res.status(404).json({ error: 'Track not found' });
+        }
+
+        // Update basic track fields
         const track = await prisma.track.update({
             where: { filename },
             data: {
-                ...(name && { name }),
+                ...(name !== undefined && { name }),
+                ...(title !== undefined && { title }),
+                ...(comments !== undefined && { comments }),
                 ...(type && { type }),
                 ...(color && { color })
             }
         });
 
-        res.json({ success: true, track });
+        // Handle labels if provided
+        if (labels !== undefined) {
+            // Delete existing label relations
+            await prisma.trackLabel.deleteMany({
+                where: { trackId: existingTrack.id }
+            });
+
+            // Create new label relations if labels provided
+            if (Array.isArray(labels) && labels.length > 0) {
+                for (const labelName of labels) {
+                    // Create or get label
+                    const label = await prisma.label.upsert({
+                        where: { name: labelName },
+                        create: { name: labelName },
+                        update: {}
+                    });
+
+                    // Create track-label relation
+                    await prisma.trackLabel.create({
+                        data: {
+                            trackId: existingTrack.id,
+                            labelId: label.id
+                        }
+                    });
+                }
+            }
+        }
+
+        // Fetch the updated track with labels
+        const updatedTrack = await prisma.track.findUnique({
+            where: { filename },
+            include: {
+                labels: {
+                    include: {
+                        label: true
+                    }
+                }
+            }
+        });
+
+        res.json({ success: true, track: updatedTrack });
     } catch (error) {
         console.error('Error updating track:', error);
         res.status(500).json({ error: 'Error updating track' });
@@ -126,7 +180,7 @@ app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
         }
 
         // Extract metadata from request body
-        const { name, latitude, longitude } = req.body;
+        const { name, latitude, longitude, trackId } = req.body;
 
         if (!latitude || !longitude) {
             fs.unlinkSync(req.file.path);
@@ -140,7 +194,8 @@ app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
                 name: name || req.file.originalname,
                 path: `/uploads/photos/${req.file.filename}`,
                 latitude: parseFloat(latitude),
-                longitude: parseFloat(longitude)
+                longitude: parseFloat(longitude),
+                trackId: trackId || null
             }
         });
 
@@ -168,6 +223,14 @@ app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
 app.get('/api/gpx/list', async (_req, res) => {
     try {
         const tracks = await prisma.track.findMany({
+            include: {
+                photos: true,
+                labels: {
+                    include: {
+                        label: true
+                    }
+                }
+            },
             orderBy: {
                 createdAt: 'desc'
             }
@@ -208,7 +271,14 @@ app.get('/api/gpx/:filename', async (req, res) => {
 
         // Get track metadata from database
         const track = await prisma.track.findUnique({
-            where: { filename }
+            where: { filename },
+            include: {
+                labels: {
+                    include: {
+                        label: true
+                    }
+                }
+            }
         });
 
         const content = fs.readFileSync(filePath, 'utf8');

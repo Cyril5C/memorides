@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+README.md
+prisma/dev.db
+prisma/dev.db-journal
+prisma/prisma/
+prisma.config.ts
+uploads/*
+!uploads/.gitkeep
+*.md
+TEST-PRODUCTION.md
+DEPLOYMENT.md
+migrate-labels.js

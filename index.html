@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mes Rides - Traces GPX & Photos</title>
+    <title>Memorides</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -13,73 +13,15 @@
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
-        <header>
-            <h1>📍 Mes Rides</h1>
-            <p>Gérez vos traces GPX de rando et vélo avec photos géotaggées</p>
-        </header>
-
-        <!-- Controls Panel -->
-        <div class="controls">
-            <div class="upload-section">
-                <label class="btn btn-primary">
-                    <input type="file" id="gpxUpload" accept=".gpx" multiple hidden>
-                    Importer GPX
-                </label>
-                <label class="btn btn-secondary">
-                    <input type="file" id="photoUpload" accept="image/*" multiple hidden>
-                    Ajouter Photos
-                </label>
-            </div>
-
-            <div class="filters">
-                <select id="activityFilter">
-                    <option value="all">Toutes les activités</option>
-                    <option value="hiking">Randonnée</option>
-                    <option value="cycling">Vélo</option>
-                </select>
-                <button class="btn btn-danger" id="clearAll">Tout effacer</button>
-            </div>
+        <!-- Map View -->
+        <div id="mapView" class="view-container active">
+            <div id="map"></div>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Sidebar with tracks list -->
-            <aside class="sidebar">
-                <h2>Traces</h2>
-                <div id="tracksList" class="tracks-list">
-                    <p class="empty-state">Aucune trace importée</p>
-                </div>
-
-                <h2>Photos</h2>
-                <div id="photosList" class="photos-list">
-                    <p class="empty-state">Aucune photo importée</p>
-                </div>
-            </aside>
-
-            <!-- Map Container -->
-            <div class="map-container">
-                <div id="map"></div>
-                <div id="trackInfo" class="track-info hidden">
-                    <h3 id="trackName"></h3>
-                    <div class="track-stats">
-                        <div class="stat">
-                            <span class="label">Distance:</span>
-                            <span id="trackDistance">-</span>
-                        </div>
-                        <div class="stat">
-                            <span class="label">Dénivelé:</span>
-                            <span id="trackElevation">-</span>
-                        </div>
-                        <div class="stat">
-                            <span class="label">Durée:</span>
-                            <span id="trackDuration">-</span>
-                        </div>
-                    </div>
-                    <button class="btn btn-small" id="closeTrackInfo">×</button>
-                </div>
-            </div>
-        </div>
+        <!-- Floating Add Button -->
+        <button class="fab" id="fabButton" title="Ajouter une trace">
+            +
+        </button>
     </div>
 
     <!-- Photo Modal -->
@@ -91,6 +33,115 @@
                 <h3 id="modalPhotoName"></h3>
                 <p id="modalPhotoLocation"></p>
             </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal hidden">
+        <div class="modal-content modal-form">
+            <button class="modal-close" id="closeUploadModal">×</button>
+            <h3>Ajouter une trace</h3>
+            <div class="upload-options">
+                <label class="upload-option-btn">
+                    <input type="file" id="gpxUploadFab" accept=".gpx" multiple hidden>
+                    📁 Importer fichier GPX
+                </label>
+                <label class="upload-option-btn">
+                    <input type="file" id="photoUploadFab" accept="image/*" multiple hidden>
+                    📸 Ajouter des photos
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Track Info Modal -->
+    <div id="trackInfoModal" class="modal hidden">
+        <div class="modal-content modal-form">
+            <button class="modal-close" id="closeTrackInfoModal">×</button>
+            <div id="trackInfoContent">
+                <h3 id="trackInfoTitle"></h3>
+                <div class="track-info-stats">
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Distance:</span>
+                        <span id="trackInfoDistance" class="track-stat-value"></span>
+                    </div>
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Dénivelé:</span>
+                        <span id="trackInfoElevation" class="track-stat-value"></span>
+                    </div>
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Durée:</span>
+                        <span id="trackInfoDuration" class="track-stat-value"></span>
+                    </div>
+                </div>
+                <div id="trackInfoLabelsContainer" class="track-info-labels" style="display: none;">
+                    <h4>Libellés</h4>
+                    <div id="trackInfoLabels" class="labels-display-readonly"></div>
+                </div>
+                <div id="trackInfoCommentsContainer" class="track-info-comments" style="display: none;">
+                    <h4>Commentaires</h4>
+                    <p id="trackInfoComments"></p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="editTrackFromInfo">✏️ Modifier</button>
+                    <button class="btn btn-secondary" id="downloadTrackFromInfo">⬇️ Télécharger GPX</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Track Edit Modal -->
+    <div id="trackEditModal" class="modal hidden">
+        <div class="modal-content modal-form">
+            <button class="modal-close" id="closeTrackEditModal">×</button>
+            <h3>Éditer la trace</h3>
+            <form id="trackEditForm">
+                <div class="form-group">
+                    <label for="editTrackTitle">Titre:</label>
+                    <input type="text" id="editTrackTitle" placeholder="Titre de la trace">
+                </div>
+                <div class="form-group">
+                    <label for="editTrackType">Type:</label>
+                    <select id="editTrackType">
+                        <option value="hiking">Randonnée</option>
+                        <option value="cycling">Vélo</option>
+                        <option value="gravel">Gravel</option>
+                        <option value="road">Route</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Libellés:</label>
+                    <div class="labels-container">
+                        <div id="labelsDisplay" class="labels-display"></div>
+                        <div class="label-input-group">
+                            <input type="text" id="newLabel" placeholder="Ajouter un libellé..." class="label-input">
+                            <button type="button" class="btn btn-primary btn-small" id="addLabelBtn">Ajouter</button>
+                        </div>
+                        <div id="labelsSuggestions" class="labels-suggestions">
+                            <small style="color: var(--text-secondary); margin-bottom: 0.5rem; display: block;">Libellés existants:</small>
+                            <div id="labelsSuggestionsContainer" class="labels-suggestions-container"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editTrackComments">Commentaires:</label>
+                    <textarea id="editTrackComments" rows="4" placeholder="Ajoutez vos commentaires..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Photos associées:</label>
+                    <div id="trackPhotosContainer" class="track-photos-grid">
+                        <!-- Photos will be displayed here -->
+                    </div>
+                    <label class="btn btn-secondary btn-small" style="margin-top: 0.5rem;">
+                        <input type="file" id="addTrackPhotos" accept="image/*" multiple hidden>
+                        Ajouter des photos
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" id="cancelTrackEdit">Annuler</button>
+                </div>
+            </form>
         </div>
     </div>
 

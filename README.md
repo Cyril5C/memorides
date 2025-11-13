@@ -1,17 +1,19 @@
-# Mes Rides
+# Memorides
 
-Application web full-stack pour gérer vos traces GPX de randonnée et vélo avec photos géotaggées.
+Application web full-stack pour gérer vos traces GPX avec photos géotaggées.
 
 ## Fonctionnalités
 
-- Import et visualisation de traces GPX sur carte interactive Leaflet
-- Upload de photos géotaggées avec extraction automatique des coordonnées EXIF
-- Calcul automatique de distance, dénivelé et durée pour chaque trace
-- Changement de couleur personnalisé pour chaque trace
-- Filtrage par type d'activité (randonnée/vélo)
-- Interface responsive mobile-first
-- Stockage persistant avec base de données
-- Déployable sur Railway
+- 🗺️ Import et visualisation de traces GPX sur carte interactive Leaflet
+- 📸 Upload de photos géotaggées avec extraction automatique des coordonnées EXIF
+- 📊 Calcul automatique de distance, dénivelé et durée pour chaque trace
+- 🏷️ **Système de libellés/tags** pour organiser vos traces
+- ✏️ Titres et commentaires personnalisables pour chaque trace
+- 🎨 Changement de couleur personnalisé pour chaque trace
+- 📱 Interface responsive mobile-first
+- 💾 Stockage persistant avec base de données
+- 🐳 Déployable avec Docker Compose
+- 🚀 Déployable sur Railway
 
 ## Technologies utilisées
 
@@ -24,52 +26,84 @@ Application web full-stack pour gérer vos traces GPX de randonnée et vélo ave
 ### Backend
 - Node.js + Express
 - Prisma ORM
-- SQLite (local) / PostgreSQL (production Railway)
+- PostgreSQL (production) / SQLite (développement)
 - Multer pour l'upload de fichiers
 - CORS
 
+### Base de données
+- **PostgreSQL** avec architecture relationnelle pour les libellés
+- Tables: Track, Label, TrackLabel, Photo
+- Relations many-to-many pour les libellés
+- Migrations Prisma pour la gestion du schéma
+
 ## Installation
 
-### Prérequis
-- Node.js (v18 ou supérieur)
-- npm
+### 🚀 Déploiement rapide avec Docker (Recommandé)
 
-### Développement local
+**Prérequis**: Docker et Docker Compose installés
+
+```bash
+# 1. Cloner le projet
+git clone <your-repo>
+cd MesRides
+
+# 2. Configurer l'environnement
+cp .env.production .env
+# Éditer .env et changer les mots de passe
+
+# 3. Démarrer avec Docker Compose
+./docker-start.sh
+# ou manuellement :
+docker-compose up -d
+
+# 4. Accéder à l'application
+open http://localhost:8080
+```
+
+Les données sont automatiquement persistées dans des volumes Docker.
+
+📖 **Guide complet**: Voir [DEPLOYMENT.md](DEPLOYMENT.md) pour tous les détails
+
+### 🛠️ Développement local (sans Docker)
+
+**Prérequis**: Node.js 20+ et PostgreSQL 16+
 
 1. Cloner le repository et installer les dépendances :
 ```bash
+git clone <your-repo>
+cd MesRides
 npm install
 ```
 
-2. Créer un fichier `.env` (copier depuis `.env.example`) :
+2. Créer un fichier `.env` :
 ```bash
-DATABASE_URL="file:./prisma/dev.db"
-PORT=3001
+DATABASE_URL="postgresql://mesrides:password@localhost:5432/mesrides"
+PORT=8080
 NODE_ENV=development
 ```
 
-3. Générer Prisma Client et créer la base de données :
+3. Créer la base de données PostgreSQL :
 ```bash
-npx prisma generate
+createdb mesrides
+```
+
+4. Appliquer les migrations :
+```bash
+npx prisma migrate deploy
+# ou en mode dev :
 npx prisma migrate dev
 ```
 
-4. Lancer le serveur :
+5. Lancer le serveur :
 ```bash
 npm start
-```
-
-Ou en mode développement avec rechargement automatique :
-```bash
+# ou en mode dev :
 npm run dev
 ```
 
-5. Ouvrir votre navigateur à l'adresse :
-```
-http://localhost:3001
-```
+6. Ouvrir http://localhost:8080
 
-### Déploiement sur Railway
+### ☁️ Déploiement sur Railway
 
 1. Créer un nouveau projet sur [Railway](https://railway.app)
 
@@ -149,14 +183,26 @@ L'application utilise Prisma ORM avec :
 ### Modèles de données
 
 **Track** (Trace GPX)
-- id, filename, name, type, color
+- id, filename, name, title, comments, type, color
 - distance, elevation, duration
 - createdAt, updatedAt
+- Relations: photos[], labels[]
+
+**Label** (Libellé/Tag)
+- id, name (unique)
+- createdAt
+- Relations: tracks[]
+
+**TrackLabel** (Table de jonction many-to-many)
+- id, trackId, labelId
+- createdAt
+- Relations: track, label
 
 **Photo** (Photo géotaggée)
 - id, filename, name, path
-- latitude, longitude
+- latitude, longitude, trackId (optional)
 - createdAt
+- Relations: track
 
 ## Notes techniques
 

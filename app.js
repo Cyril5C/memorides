@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // Application State
 const state = {
@@ -10,7 +10,9 @@ const state = {
         tracks: {},
         photos: L.layerGroup()
     },
-    currentFilter: 'all'
+    currentFilter: 'all',
+    currentView: 'map',
+    searchTerm: ''
 };
 
 // Initialize the application
@@ -37,22 +39,6 @@ function initMap() {
 
 // Event Listeners
 function attachEventListeners() {
-    // GPX Upload
-    document.getElementById('gpxUpload').addEventListener('change', handleGPXUpload);
-
-    // Photo Upload
-    document.getElementById('photoUpload').addEventListener('change', handlePhotoUpload);
-
-    // Activity Filter
-    document.getElementById('activityFilter').addEventListener('change', handleFilterChange);
-
-    // Clear All
-    document.getElementById('clearAll').addEventListener('click', handleClearAll);
-
-    // Track Info Close
-    document.getElementById('closeTrackInfo').addEventListener('click', () => {
-        document.getElementById('trackInfo').classList.add('hidden');
-    });
 
     // Modal Close
     document.getElementById('closeModal').addEventListener('click', () => {
@@ -65,6 +51,65 @@ function attachEventListeners() {
             document.getElementById('photoModal').classList.add('hidden');
         }
     });
+
+    // Track Info Modal
+    document.getElementById('closeTrackInfoModal').addEventListener('click', closeTrackInfoModal);
+    document.getElementById('trackInfoModal').addEventListener('click', (e) => {
+        if (e.target.id === 'trackInfoModal') {
+            closeTrackInfoModal();
+        }
+    });
+    document.getElementById('editTrackFromInfo').addEventListener('click', () => {
+        const trackId = document.getElementById('editTrackFromInfo').dataset.trackId;
+        closeTrackInfoModal();
+        editTrack(trackId);
+    });
+    document.getElementById('downloadTrackFromInfo').addEventListener('click', () => {
+        const trackId = document.getElementById('downloadTrackFromInfo').dataset.trackId;
+        downloadTrack(trackId);
+    });
+
+    // Track Edit Modal
+    document.getElementById('closeTrackEditModal').addEventListener('click', closeTrackEditModal);
+    document.getElementById('cancelTrackEdit').addEventListener('click', closeTrackEditModal);
+    document.getElementById('trackEditForm').addEventListener('submit', handleTrackEdit);
+    document.getElementById('trackEditModal').addEventListener('click', (e) => {
+        if (e.target.id === 'trackEditModal') {
+            closeTrackEditModal();
+        }
+    });
+
+    // Add photos to track
+    document.getElementById('addTrackPhotos').addEventListener('change', handleAddTrackPhotos);
+
+    // Labels management
+    document.getElementById('addLabelBtn').addEventListener('click', addLabel);
+    document.getElementById('newLabel').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addLabel();
+        }
+    });
+
+
+    // FAB button - trigger GPX upload directly
+    document.getElementById('fabButton').addEventListener('click', () => {
+        document.getElementById('gpxUploadFab').click();
+    });
+
+    // Upload modal
+    document.getElementById('closeUploadModal').addEventListener('click', () => {
+        document.getElementById('uploadModal').classList.add('hidden');
+    });
+    document.getElementById('uploadModal').addEventListener('click', (e) => {
+        if (e.target.id === 'uploadModal') {
+            document.getElementById('uploadModal').classList.add('hidden');
+        }
+    });
+
+    // FAB uploads
+    document.getElementById('gpxUploadFab').addEventListener('change', handleGPXUpload);
+    document.getElementById('photoUploadFab').addEventListener('change', handlePhotoUpload);
 }
 
 // Handle GPX File Upload
@@ -79,7 +124,7 @@ async function handleGPXUpload(event) {
 
             if (gpxData) {
                 const type = guessActivityType(gpxData.name);
-                const color = type === 'cycling' ? '#2563eb' : '#10b981';
+                const color = '#2563eb'; // Blue color for all tracks
                 const distance = calculateDistance(gpxData.points);
                 const elevation = calculateElevation(gpxData.points);
                 const duration = calculateDuration(gpxData.points);
@@ -110,6 +155,9 @@ async function handleGPXUpload(event) {
 
                     state.tracks.push(track);
                     addTrackToMap(track);
+
+                    // Fit map to the newly added track
+                    state.map.fitBounds(track.bounds, { padding: [50, 50] });
                 }
             }
         } catch (error) {
@@ -119,6 +167,13 @@ async function handleGPXUpload(event) {
     }
 
     renderTracks();
+    if (state.currentView === 'list') {
+        renderListView();
+    }
+
+    // Close upload modal if open
+    document.getElementById('uploadModal').classList.add('hidden');
+
     event.target.value = '';
 }
 
@@ -236,7 +291,7 @@ function calculateBounds(points) {
 // Add track to map
 function addTrackToMap(track) {
     const latLngs = track.points.map(p => [p.lat, p.lon]);
-    const color = track.color || (track.type === 'cycling' ? '#2563eb' : '#10b981');
+    const color = track.color || '#2563eb'; // Default blue color
 
     const polyline = L.polyline(latLngs, {
         color: color,
@@ -244,7 +299,10 @@ function addTrackToMap(track) {
         opacity: 0.7
     }).addTo(state.map);
 
-    polyline.bindPopup(`<h4>${track.name}</h4><p>${formatDistance(track.distance)}</p>`);
+    // On click, show track info modal
+    polyline.on('click', () => {
+        showTrackInfoModal(track);
+    });
 
     state.layers.tracks[track.id] = polyline;
 }
@@ -290,6 +348,10 @@ async function handlePhotoUpload(event) {
     }
 
     renderPhotos();
+
+    // Close upload modal if open
+    document.getElementById('uploadModal').classList.add('hidden');
+
     event.target.value = '';
 }
 
@@ -350,7 +412,7 @@ function addPhotoToMap(photo) {
         shadowSize: [41, 41]
     });
 
-    const photoUrl = `http://localhost:3001${photo.path}`;
+    const photoUrl = `http://localhost:8080${photo.path}`;
     const marker = L.marker([photo.latitude, photo.longitude], { icon })
         .bindPopup(`<h4>${photo.name}</h4><img src="${photoUrl}" style="max-width: 200px; border-radius: 4px;">`)
         .on('click', () => showPhotoModal(photo));
@@ -360,7 +422,7 @@ function addPhotoToMap(photo) {
 
 // Show photo modal
 function showPhotoModal(photo) {
-    const photoUrl = `http://localhost:3001${photo.path}`;
+    const photoUrl = `http://localhost:8080${photo.path}`;
     document.getElementById('modalImage').src = photoUrl;
     document.getElementById('modalPhotoName').textContent = photo.name;
     document.getElementById('modalPhotoLocation').textContent =
@@ -368,58 +430,68 @@ function showPhotoModal(photo) {
     document.getElementById('photoModal').classList.remove('hidden');
 }
 
-// Render tracks list
-function renderTracks() {
-    const tracksList = document.getElementById('tracksList');
-    const filteredTracks = state.tracks.filter(track =>
-        state.currentFilter === 'all' || track.type === state.currentFilter
-    );
+// Show track info modal
+function showTrackInfoModal(track) {
+    const displayTitle = track.title || track.name;
+    const typeIcon = getTypeIcon(track.type);
 
-    if (filteredTracks.length === 0) {
-        tracksList.innerHTML = '<p class="empty-state">Aucune trace importée</p>';
-        return;
+    document.getElementById('trackInfoTitle').textContent = `${typeIcon} ${displayTitle}`;
+    document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
+    document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
+    document.getElementById('trackInfoDuration').textContent = formatDuration(track.duration);
+
+    // Show/hide labels section
+    const labelsContainer = document.getElementById('trackInfoLabelsContainer');
+    if (track.labels && Array.isArray(track.labels) && track.labels.length > 0) {
+        const labelsHtml = track.labels.map(trackLabel =>
+            `<span class="label-tag">${trackLabel.label.name}</span>`
+        ).join('');
+        document.getElementById('trackInfoLabels').innerHTML = labelsHtml;
+        labelsContainer.style.display = 'block';
+    } else {
+        labelsContainer.style.display = 'none';
     }
 
-    tracksList.innerHTML = filteredTracks.map(track => `
-        <div class="track-item" data-id="${track.id}">
-            <div class="track-item-header">
-                <span class="track-item-name">${track.name}</span>
-                <span class="track-item-type">${track.type === 'cycling' ? '🚴' : '🥾'}</span>
-            </div>
-            <div class="track-item-stats">
-                ${formatDistance(track.distance)} • ${formatElevation(track.elevation)}
-            </div>
-            <div class="track-item-color">
-                <label>
-                    <input type="color" value="${track.color}" onchange="changeTrackColor('${track.id}', this.value)">
-                </label>
-            </div>
-            <div class="track-item-actions">
-                <button class="btn btn-primary btn-small" onclick="focusTrack('${track.id}')">Voir</button>
-                <button class="btn btn-danger btn-small" onclick="deleteTrack('${track.id}')">Supprimer</button>
-            </div>
-        </div>
-    `).join('');
+    // Show/hide comments section
+    const commentsContainer = document.getElementById('trackInfoCommentsContainer');
+    if (track.comments && track.comments.trim()) {
+        document.getElementById('trackInfoComments').textContent = track.comments;
+        commentsContainer.style.display = 'block';
+    } else {
+        commentsContainer.style.display = 'none';
+    }
+
+    // Store track ID in edit and download buttons
+    document.getElementById('editTrackFromInfo').dataset.trackId = track.id;
+    document.getElementById('downloadTrackFromInfo').dataset.trackId = track.id;
+
+    document.getElementById('trackInfoModal').classList.remove('hidden');
 }
 
-// Render photos list
+// Close track info modal
+function closeTrackInfoModal() {
+    document.getElementById('trackInfoModal').classList.add('hidden');
+}
+
+// Render tracks list (simplified - no sidebar)
+function renderTracks() {
+    // No sidebar to render anymore
+}
+
+// Get icon for track type
+function getTypeIcon(type) {
+    const icons = {
+        'hiking': '🥾',
+        'cycling': '🚴',
+        'gravel': '🚵',
+        'road': '🚴‍♂️'
+    };
+    return icons[type] || '🥾';
+}
+
+// Render photos list (simplified - no sidebar)
 function renderPhotos() {
-    const photosList = document.getElementById('photosList');
-
-    if (state.photos.length === 0) {
-        photosList.innerHTML = '<p class="empty-state">Aucune photo importée</p>';
-        return;
-    }
-
-    photosList.innerHTML = state.photos.map(photo => {
-        const photoUrl = `http://localhost:3001${photo.path}`;
-        const photoData = JSON.stringify(photo).replace(/'/g, "\\'");
-        return `
-            <div class="photo-item" onclick='showPhotoModal(${photoData})'>
-                <img src="${photoUrl}" alt="${photo.name}">
-            </div>
-        `;
-    }).join('');
+    // No sidebar to render anymore
 }
 
 // Focus on track
@@ -427,19 +499,24 @@ function focusTrack(trackId) {
     const track = state.tracks.find(t => t.id.toString() === trackId.toString());
     if (track && state.layers.tracks[track.id]) {
         state.map.fitBounds(track.bounds, { padding: [50, 50] });
+        showTrackInfoModal(track);
+    }
+}
 
-        // Show track info
-        document.getElementById('trackName').textContent = track.name;
-        document.getElementById('trackDistance').textContent = formatDistance(track.distance);
-        document.getElementById('trackElevation').textContent = formatElevation(track.elevation);
-        document.getElementById('trackDuration').textContent = formatDuration(track.duration);
-        document.getElementById('trackInfo').classList.remove('hidden');
+// Download track GPX file
+function downloadTrack(trackId) {
+    const track = state.tracks.find(t => t.id.toString() === trackId.toString());
+    if (track && track.filename) {
+        // Create a download link to the GPX file
+        const downloadUrl = `${API_BASE_URL}/gpx/${track.filename}`;
 
-        // Highlight track item
-        document.querySelectorAll('.track-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        document.querySelector(`[data-id="${trackId}"]`).classList.add('active');
+        // Create a temporary anchor element and trigger download
+        const link = document.createElement('a');
+        link.href = `/uploads/gpx/${track.filename}`;
+        link.download = track.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
@@ -508,23 +585,6 @@ async function deleteTrack(trackId) {
     }
 }
 
-// Handle filter change
-function handleFilterChange(event) {
-    state.currentFilter = event.target.value;
-    renderTracks();
-
-    // Update track visibility
-    state.tracks.forEach(track => {
-        const layer = state.layers.tracks[track.id];
-        if (layer) {
-            if (state.currentFilter === 'all' || track.type === state.currentFilter) {
-                layer.addTo(state.map);
-            } else {
-                state.map.removeLayer(layer);
-            }
-        }
-    });
-}
 
 // Clear all data
 async function handleClearAll() {
@@ -638,4 +698,413 @@ async function loadPhotosFromServer() {
     } catch (error) {
         console.error('Error loading photos from server:', error);
     }
+}
+
+// Edit track - open modal
+let currentEditingTrackId = null;
+let currentTrackLabels = [];
+
+// Get all unique labels from all tracks
+function getAllExistingLabels() {
+    const allLabels = new Set();
+    state.tracks.forEach(track => {
+        if (track.labels && Array.isArray(track.labels)) {
+            track.labels.forEach(trackLabel => {
+                if (trackLabel.label && trackLabel.label.name) {
+                    allLabels.add(trackLabel.label.name);
+                }
+            });
+        }
+    });
+    return Array.from(allLabels).sort();
+}
+
+function editTrack(trackId) {
+    const track = state.tracks.find(t => t.id.toString() === trackId.toString());
+    if (!track) return;
+
+    currentEditingTrackId = trackId;
+
+    // Fill form with current values
+    document.getElementById('editTrackTitle').value = track.title || '';
+    document.getElementById('editTrackType').value = track.type || 'hiking';
+    document.getElementById('editTrackComments').value = track.comments || '';
+
+    // Load labels from new structure
+    currentTrackLabels = [];
+    if (track.labels && Array.isArray(track.labels)) {
+        currentTrackLabels = track.labels.map(trackLabel => trackLabel.label.name);
+    }
+    renderLabels();
+    renderLabelSuggestions();
+
+    // Display track photos
+    displayTrackPhotos(track);
+
+    // Show modal
+    document.getElementById('trackEditModal').classList.remove('hidden');
+}
+
+// Display photos for a track
+function displayTrackPhotos(track) {
+    const container = document.getElementById('trackPhotosContainer');
+
+    if (!track.photos || track.photos.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem;">Aucune photo associée</p>';
+        return;
+    }
+
+    container.innerHTML = track.photos.map(photo => `
+        <div class="track-photo-item">
+            <img src="http://localhost:8080${photo.path}" alt="${photo.name}" onclick='showPhotoModal(${JSON.stringify(photo)})'>
+            <button class="delete-photo" onclick="deleteTrackPhoto('${photo.id}')" title="Supprimer">×</button>
+        </div>
+    `).join('');
+}
+
+// Close track edit modal
+function closeTrackEditModal() {
+    document.getElementById('trackEditModal').classList.add('hidden');
+    currentEditingTrackId = null;
+    currentTrackLabels = [];
+}
+
+// Add label
+function addLabel(labelText = null) {
+    const input = document.getElementById('newLabel');
+    const label = labelText || input.value.trim();
+
+    if (label && !currentTrackLabels.includes(label)) {
+        currentTrackLabels.push(label);
+        renderLabels();
+        renderLabelSuggestions();
+        if (!labelText) input.value = '';
+    }
+}
+
+// Remove label
+function removeLabel(index) {
+    currentTrackLabels.splice(index, 1);
+    renderLabels();
+    renderLabelSuggestions();
+}
+
+// Render labels
+function renderLabels() {
+    const container = document.getElementById('labelsDisplay');
+
+    if (currentTrackLabels.length === 0) {
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.9rem;">Aucun libellé</span>';
+        return;
+    }
+
+    container.innerHTML = currentTrackLabels.map((label, index) => `
+        <span class="label-tag">
+            ${label}
+            <button type="button" class="label-tag-remove" onclick="removeLabel(${index})" title="Supprimer">×</button>
+        </span>
+    `).join('');
+}
+
+// Render label suggestions
+function renderLabelSuggestions() {
+    const container = document.getElementById('labelsSuggestionsContainer');
+    const existingLabels = getAllExistingLabels();
+
+    if (existingLabels.length === 0) {
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.85rem;">Aucun libellé existant</span>';
+        return;
+    }
+
+    container.innerHTML = existingLabels.map(label => {
+        const isAlreadyAdded = currentTrackLabels.includes(label);
+        const disabledClass = isAlreadyAdded ? ' disabled' : '';
+        const onclick = isAlreadyAdded ? '' : `onclick="addLabel('${label.replace(/'/g, "\\'")}')"`;
+
+        return `<span class="label-suggestion${disabledClass}" ${onclick}>${label}</span>`;
+    }).join('');
+}
+
+// Handle track edit form submission
+async function handleTrackEdit(event) {
+    event.preventDefault();
+
+    if (!currentEditingTrackId) return;
+
+    const track = state.tracks.find(t => t.id.toString() === currentEditingTrackId.toString());
+    if (!track) return;
+
+    const title = document.getElementById('editTrackTitle').value;
+    const type = document.getElementById('editTrackType').value;
+    const comments = document.getElementById('editTrackComments').value;
+    const labels = currentTrackLabels; // Send as array instead of comma-separated string
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title || null,
+                type: type,
+                comments: comments || null,
+                labels: labels // Send array of label names
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Update local state with ALL fields from server response
+            Object.assign(track, result.track);
+
+            // Re-render tracks list
+            renderTracks();
+
+            // Close modal
+            closeTrackEditModal();
+
+            alert('Trace mise à jour avec succès !');
+        } else {
+            alert('Erreur lors de la mise à jour de la trace');
+        }
+    } catch (error) {
+        console.error('Error updating track:', error);
+        alert('Erreur lors de la mise à jour de la trace');
+    }
+}
+
+// Handle adding photos to a track
+async function handleAddTrackPhotos(event) {
+    if (!currentEditingTrackId) {
+        alert('Erreur: Aucune trace sélectionnée');
+        return;
+    }
+
+    const files = Array.from(event.target.files);
+    const track = state.tracks.find(t => t.id.toString() === currentEditingTrackId.toString());
+
+    if (!track) return;
+
+    for (const file of files) {
+        try {
+            // Extract GPS data from photo
+            const gpsData = await extractGPSData(file);
+
+            if (!gpsData) {
+                alert(`La photo ${file.name} ne contient pas de données GPS`);
+                continue;
+            }
+
+            // Upload photo with trackId
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('name', file.name);
+            formData.append('latitude', gpsData.latitude.toString());
+            formData.append('longitude', gpsData.longitude.toString());
+            formData.append('trackId', track.id);
+
+            const response = await fetch(`${API_BASE_URL}/photos/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Add photo to track in state
+                if (!track.photos) {
+                    track.photos = [];
+                }
+                track.photos.push(result.photo);
+
+                // Add photo to map
+                addPhotoToMap(result.photo);
+
+                // Update photos list
+                state.photos.push(result.photo);
+                renderPhotos();
+
+                // Refresh track photos display
+                displayTrackPhotos(track);
+
+                alert(`Photo ${file.name} ajoutée avec succès !`);
+            } else {
+                alert(`Erreur lors de l'ajout de la photo ${file.name}`);
+            }
+        } catch (error) {
+            console.error('Error uploading photo:', error);
+            alert(`Erreur lors de l'ajout de la photo ${file.name}`);
+        }
+    }
+
+    // Reset input
+    event.target.value = '';
+}
+
+// Delete a photo from a track
+async function deleteTrackPhoto(photoId) {
+    if (!confirm('Supprimer cette photo ?')) return;
+
+    const photo = state.photos.find(p => p.id === photoId);
+    if (!photo) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/photos/${photo.filename}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Remove from state
+            state.photos = state.photos.filter(p => p.id !== photoId);
+
+            // Remove from track
+            const track = state.tracks.find(t => t.id.toString() === currentEditingTrackId.toString());
+            if (track && track.photos) {
+                track.photos = track.photos.filter(p => p.id !== photoId);
+                displayTrackPhotos(track);
+            }
+
+            // Remove from map
+            state.layers.photos.eachLayer(layer => {
+                if (layer.options && layer.options.photoId === photoId) {
+                    state.layers.photos.removeLayer(layer);
+                }
+            });
+
+            renderPhotos();
+            alert('Photo supprimée avec succès');
+        } else {
+            alert('Erreur lors de la suppression de la photo');
+        }
+    } catch (error) {
+        console.error('Error deleting photo:', error);
+        alert('Erreur lors de la suppression de la photo');
+    }
+}
+
+// Switch between Map and List views
+function switchView(view) {
+    state.currentView = view;
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+    });
+
+    // Update view containers
+    document.getElementById('mapView').classList.toggle('active', view === 'map');
+    document.getElementById('listView').classList.toggle('active', view === 'list');
+
+    // Refresh map if switching to map view
+    if (view === 'map' && state.map) {
+        setTimeout(() => state.map.invalidateSize(), 100);
+    }
+
+    // Render list view if switching to list
+    if (view === 'list') {
+        renderListView();
+    }
+}
+
+// Render list view
+function renderListView() {
+    const container = document.getElementById('tracksListDetailed');
+
+    // Filter and search tracks
+    let filteredTracks = state.tracks.filter(track => {
+        const matchesFilter = state.currentFilter === 'all' || track.type === state.currentFilter;
+        const matchesSearch = !state.searchTerm ||
+            (track.title && track.title.toLowerCase().includes(state.searchTerm)) ||
+            track.name.toLowerCase().includes(state.searchTerm) ||
+            (track.comments && track.comments.toLowerCase().includes(state.searchTerm));
+        return matchesFilter && matchesSearch;
+    });
+
+    if (filteredTracks.length === 0) {
+        container.innerHTML = '<p class="empty-state">Aucune trace trouvée</p>';
+        return;
+    }
+
+    container.innerHTML = filteredTracks.map(track => {
+        const typeIcon = getTypeIcon(track.type);
+        const displayTitle = track.title || track.name;
+        const photosHtml = track.photos && track.photos.length > 0
+            ? `<div class="track-card-photos">
+                ${track.photos.slice(0, 5).map(photo =>
+                    `<img src="http://localhost:8080${photo.path}"
+                         alt="${photo.name}"
+                         class="track-card-photo"
+                         onclick='showPhotoModal(${JSON.stringify(photo)})'>`
+                ).join('')}
+                ${track.photos.length > 5 ? `<span style="color: var(--text-secondary); font-size: 0.9rem;">+${track.photos.length - 5} photos</span>` : ''}
+               </div>`
+            : '';
+
+        return `
+            <div class="track-card">
+                <div class="track-card-header">
+                    <div class="track-card-title">
+                        <h3>${typeIcon} ${displayTitle}</h3>
+                        <div class="track-card-subtitle">${track.name}</div>
+                    </div>
+                    <input type="color"
+                           value="${track.color}"
+                           class="track-card-color"
+                           onchange="changeTrackColor('${track.id}', this.value)">
+                </div>
+
+                ${track.comments ? `<div class="track-card-comments">${track.comments}</div>` : ''}
+
+                <div class="track-card-stats">
+                    <div class="track-card-stat">
+                        <div class="track-card-stat-label">Distance</div>
+                        <div class="track-card-stat-value">${formatDistance(track.distance)}</div>
+                    </div>
+                    <div class="track-card-stat">
+                        <div class="track-card-stat-label">Dénivelé</div>
+                        <div class="track-card-stat-value">${formatElevation(track.elevation)}</div>
+                    </div>
+                    ${track.duration ? `
+                    <div class="track-card-stat">
+                        <div class="track-card-stat-label">Durée</div>
+                        <div class="track-card-stat-value">${formatDuration(track.duration)}</div>
+                    </div>
+                    ` : ''}
+                    ${track.photos ? `
+                    <div class="track-card-stat">
+                        <div class="track-card-stat-label">Photos</div>
+                        <div class="track-card-stat-value">${track.photos.length}</div>
+                    </div>
+                    ` : ''}
+                </div>
+
+                ${photosHtml}
+
+                <div class="track-card-actions">
+                    <button class="btn btn-primary btn-small" onclick="focusTrackFromList('${track.id}')">
+                        🗺️ Voir sur la carte
+                    </button>
+                    <button class="btn btn-secondary btn-small" onclick="editTrack('${track.id}')">
+                        ✏️ Éditer
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteTrack('${track.id}')">
+                        🗑️ Supprimer
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Focus track from list view
+function focusTrackFromList(trackId) {
+    // Switch to map view
+    switchView('map');
+
+    // Focus on the track
+    setTimeout(() => focusTrack(trackId), 200);
 }

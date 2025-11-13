@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,16 +14,42 @@ model Track {
   id        String   @id @default(cuid())
   filename  String   @unique
   name      String
-  type      String   // 'hiking' or 'cycling'
+  title     String?  // Custom title for the track
+  comments  String?  // User comments about the track
+  type      String   // 'hiking', 'cycling', 'gravel', or 'road'
   color     String   @default("#2563eb")
   distance  Float    // in kilometers
   elevation Float    // in meters
   duration  Float?   // in minutes
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  photos    Photo[]  // Photos associated with this track
+  labels    TrackLabel[]  // Labels associated with this track
 
   @@index([createdAt])
   @@index([type])
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  tracks    TrackLabel[]  // Tracks with this label
+
+  @@index([name])
+}
+
+model TrackLabel {
+  id        String   @id @default(cuid())
+  trackId   String
+  labelId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([trackId, labelId])
+  @@index([trackId])
+  @@index([labelId])
 }
 
 model Photo {
@@ -34,6 +60,9 @@ model Photo {
   latitude  Float
   longitude Float
   createdAt DateTime @default(now())
+  trackId   String?  // Optional: photo can be linked to a track
+  track     Track?   @relation(fields: [trackId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
+  @@index([trackId])
 }
