@@ -6,6 +6,12 @@
   "deploy": {
     "startCommand": "sh start.sh",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 10,
+    "volumeMounts": [
+      {
+        "mountPath": "/app/uploads",
+        "volumeName": "uploads"
+      }
+    ]
   }
 }
