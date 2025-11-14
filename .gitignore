@@ -16,6 +16,10 @@ prisma/prisma/
 uploads/
 !uploads/.gitkeep
 
+# Exports
+exports/
+*.zip
+
 # Logs
 *.log
 npm-debug.log*
