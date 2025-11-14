@@ -470,19 +470,18 @@ function addTrackToMap(track) {
     });
 
     // Add markers at the start and end of the track
-    const typeIcon = getTypeIcon(track.type);
     const displayTitle = track.title || track.name;
     const segmentArray = Object.values(segments);
     const firstSegmentPoints = segmentArray[0];
     const lastSegmentPoints = segmentArray[segmentArray.length - 1];
 
-    // Start marker
+    // Start marker (generic location pin)
     if (firstSegmentPoints && firstSegmentPoints.length > 0) {
         const startMarker = L.marker(firstSegmentPoints[0], {
             icon: L.divIcon({
                 className: 'track-info-marker',
                 html: `<div class="track-info-marker-content track-start-marker" style="background-color: ${color}">
-                          <span style="font-size: 16px;">${typeIcon}</span>
+                          <span style="font-size: 18px;">📍</span>
                        </div>`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 16]
