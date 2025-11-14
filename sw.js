@@ -1,5 +1,6 @@
 // Service Worker for Memorides PWA
-const CACHE_NAME = 'memorides-v1';
+const CACHE_VERSION = '1.0.5'; // Increment this on each deployment
+const CACHE_NAME = `memorides-v${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -41,47 +42,49 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - Network First strategy for dynamic content
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
+  // Skip API requests - always go to network
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
+    // Try network first
+    fetch(event.request)
       .then((response) => {
-        // Return cached response if found
-        if (response) {
+        // Check if valid response
+        if (!response || response.status !== 200) {
           return response;
         }
 
-        // Clone the request
-        const fetchRequest = event.request.clone();
+        // Clone the response
+        const responseToCache = response.clone();
 
-        // Fetch from network
-        return fetch(fetchRequest).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
+        // Cache the fetched response
+        caches.open(CACHE_NAME)
+          .then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
 
-          // Clone the response
-          const responseToCache = response.clone();
-
-          // Cache the fetched response for static assets
-          if (event.request.url.match(/\.(css|js|png|jpg|jpeg|svg|gif|woff|woff2)$/)) {
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-          }
-
-          return response;
-        }).catch((error) => {
-          console.error('Fetch failed:', error);
-          // Could return a custom offline page here
-        });
+        return response;
+      })
+      .catch(() => {
+        // Network failed, try cache
+        return caches.match(event.request)
+          .then((response) => {
+            if (response) {
+              console.log('Serving from cache (offline):', event.request.url);
+              return response;
+            }
+            // No cache either
+            console.error('No cache available for:', event.request.url);
+          });
       })
   );
 });
