@@ -934,15 +934,19 @@ async function loadTracksFromServer() {
         console.log('Tracks loaded:', result);
 
         if (result.success && result.tracks && result.tracks.length > 0) {
+            console.log(`📍 Loading ${result.tracks.length} tracks from database...`);
             for (const trackData of result.tracks) {
+                console.log(`📄 Loading GPX file: ${trackData.filename}`);
                 // Get GPX content
                 const contentResponse = await fetch(`${API_BASE_URL}/gpx/${trackData.filename}`);
 
                 // Skip if file not found (happens when volume is not persistent)
                 if (!contentResponse.ok) {
-                    console.warn(`GPX file not found: ${trackData.filename} - skipping`);
+                    console.error(`❌ GPX file not found: ${trackData.filename} (status: ${contentResponse.status})`);
+                    console.error(`   URL attempted: ${API_BASE_URL}/gpx/${trackData.filename}`);
                     continue;
                 }
+                console.log(`✅ GPX file loaded: ${trackData.filename}`);
 
                 const contentResult = await contentResponse.json();
 
