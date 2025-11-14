@@ -3,18 +3,15 @@
   <rect width="512" height="512" fill="#2563eb" rx="80"/>
 
   <!-- Mountain/Track icon -->
-  <g transform="translate(80, 120)">
+  <g transform="translate(80, 150)">
     <!-- Mountain path -->
-    <path d="M 30 250 L 100 120 L 170 180 L 240 80 L 310 160 L 350 250 Z"
+    <path d="M 30 220 L 100 90 L 170 150 L 240 50 L 310 130 L 350 220 Z"
           fill="#60a5fa" opacity="0.4"/>
-    <path d="M 30 250 L 100 120 L 170 180 L 240 80 L 310 160 L 350 250"
-          fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 30 220 L 100 90 L 170 150 L 240 50 L 310 130 L 350 220"
+          fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
 
     <!-- Location marker -->
-    <circle cx="240" cy="80" r="20" fill="#ef4444" stroke="#ffffff" stroke-width="4"/>
-    <circle cx="240" cy="80" r="8" fill="#ffffff"/>
-
-    <!-- Text M -->
-    <text x="190" y="210" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#ffffff">M</text>
+    <circle cx="240" cy="50" r="24" fill="#ef4444" stroke="#ffffff" stroke-width="5"/>
+    <circle cx="240" cy="50" r="10" fill="#ffffff"/>
   </g>
 </svg>
