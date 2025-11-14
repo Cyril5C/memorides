@@ -128,12 +128,14 @@ async function handleGPXUpload(event) {
                 const distance = calculateDistance(gpxData.points);
                 const elevation = calculateElevation(gpxData.points);
                 const duration = calculateDuration(gpxData.points);
+                const direction = detectDirection(gpxData.points);
 
                 // Upload file with metadata to server
                 const formData = new FormData();
                 formData.append('gpx', file);
                 formData.append('name', gpxData.name || file.name.replace('.gpx', ''));
                 formData.append('type', type);
+                formData.append('direction', direction);
                 formData.append('color', color);
                 formData.append('distance', distance.toString());
                 formData.append('elevation', elevation.toString());
@@ -276,6 +278,64 @@ function calculateDuration(points) {
         return (lastPoint.time - firstPoint.time) / 1000 / 60; // minutes
     }
     return null;
+}
+
+// Detect track direction (one-way, round-trip, or loop)
+function detectDirection(points) {
+    if (!points || points.length < 2) {
+        return 'one-way';
+    }
+
+    const start = points[0];
+    const end = points[points.length - 1];
+
+    // Calculate distance between start and end points
+    const R = 6371; // Earth radius in km
+    const dLat = toRad(end.lat - start.lat);
+    const dLon = toRad(end.lon - start.lon);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(start.lat)) * Math.cos(toRad(end.lat)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceStartEnd = R * c * 1000; // Distance in meters
+
+    // If start and end are close (< 100m), it's likely a loop
+    if (distanceStartEnd < 100) {
+        return 'loop';
+    }
+
+    // Check if it's a round trip by analyzing if the track "folds back"
+    // Compare distance of first quarter vs last quarter
+    const quarterLength = Math.floor(points.length / 4);
+    if (quarterLength > 10) {
+        const firstQuarter = points.slice(0, quarterLength);
+        const lastQuarter = points.slice(-quarterLength);
+
+        // Calculate average distance between corresponding points
+        let avgDistance = 0;
+        const samplesToCheck = Math.min(10, quarterLength);
+        for (let i = 0; i < samplesToCheck; i++) {
+            const p1 = firstQuarter[i];
+            const p2 = lastQuarter[samplesToCheck - 1 - i];
+
+            const dLat = toRad(p2.lat - p1.lat);
+            const dLon = toRad(p2.lon - p1.lon);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            avgDistance += R * c * 1000;
+        }
+        avgDistance /= samplesToCheck;
+
+        // If first and last quarters are close on average (< 200m), likely round-trip
+        if (avgDistance < 200) {
+            return 'round-trip';
+        }
+    }
+
+    // Otherwise, it's a one-way track
+    return 'one-way';
 }
 
 // Calculate bounds
@@ -728,6 +788,7 @@ function editTrack(trackId) {
     // Fill form with current values
     document.getElementById('editTrackTitle').value = track.title || '';
     document.getElementById('editTrackType').value = track.type || 'hiking';
+    document.getElementById('editTrackDirection').value = track.direction || 'one-way';
     document.getElementById('editTrackComments').value = track.comments || '';
 
     // Load labels from new structure
@@ -846,6 +907,7 @@ async function handleTrackEdit(event) {
 
     const title = document.getElementById('editTrackTitle').value;
     const type = document.getElementById('editTrackType').value;
+    const direction = document.getElementById('editTrackDirection').value;
     const comments = document.getElementById('editTrackComments').value;
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
 
@@ -858,6 +920,7 @@ async function handleTrackEdit(event) {
             body: JSON.stringify({
                 title: title || null,
                 type: type,
+                direction: direction,
                 comments: comments || null,
                 labels: labels // Send array of label names
             })

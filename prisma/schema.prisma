@@ -17,6 +17,7 @@ model Track {
   title     String?  // Custom title for the track
   comments  String?  // User comments about the track
   type      String   // 'hiking', 'cycling', 'gravel', or 'road'
+  direction String   @default("one-way") // 'one-way', 'round-trip', or 'loop'
   color     String   @default("#2563eb")
   distance  Float    // in kilometers
   elevation Float    // in meters

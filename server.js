@@ -70,7 +70,7 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
         }
 
         // Extract metadata from request body
-        const { name, title, comments, type, color, distance, elevation, duration } = req.body;
+        const { name, title, comments, type, direction, color, distance, elevation, duration } = req.body;
 
         // Save to database
         const track = await prisma.track.create({
@@ -80,6 +80,7 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
                 title: title || null,
                 comments: comments || null,
                 type: type || 'hiking',
+                direction: direction || 'one-way',
                 color: color || '#2563eb',
                 distance: parseFloat(distance) || 0,
                 elevation: parseFloat(elevation) || 0,
@@ -111,7 +112,7 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
 app.patch('/api/gpx/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        const { name, title, comments, labels, type, color } = req.body;
+        const { name, title, comments, labels, type, direction, color } = req.body;
 
         // First, get the track to get its ID
         const existingTrack = await prisma.track.findUnique({
@@ -130,6 +131,7 @@ app.patch('/api/gpx/:filename', async (req, res) => {
                 ...(title !== undefined && { title }),
                 ...(comments !== undefined && { comments }),
                 ...(type && { type }),
+                ...(direction && { direction }),
                 ...(color && { color })
             }
         });
