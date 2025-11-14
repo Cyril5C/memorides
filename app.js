@@ -798,8 +798,17 @@ function formatDuration(minutes) {
 // Load tracks from server
 async function loadTracksFromServer() {
     try {
+        console.log('Loading tracks from:', API_BASE_URL);
         const response = await fetch(`${API_BASE_URL}/gpx/list`);
+
+        if (!response.ok) {
+            console.error('Failed to fetch tracks:', response.status, response.statusText);
+            alert(`Erreur lors du chargement des traces: ${response.status}`);
+            return;
+        }
+
         const result = await response.json();
+        console.log('Tracks loaded:', result);
 
         if (result.success && result.tracks && result.tracks.length > 0) {
             for (const trackData of result.tracks) {
@@ -827,6 +836,7 @@ async function loadTracksFromServer() {
         renderTracks();
     } catch (error) {
         console.error('Error loading tracks from server:', error);
+        alert(`Erreur lors du chargement des traces: ${error.message}`);
     }
 }
 
