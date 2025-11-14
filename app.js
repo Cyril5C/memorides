@@ -124,7 +124,6 @@ function attachEventListeners() {
 
     // FAB uploads
     document.getElementById('gpxUploadFab').addEventListener('change', handleGPXUpload);
-    document.getElementById('photoUploadFab').addEventListener('change', handlePhotoUpload);
 }
 
 // Handle GPX File Upload
