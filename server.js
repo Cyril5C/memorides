@@ -41,12 +41,17 @@ const photosDir = path.join(uploadsDir, 'photos');
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: function (_req, file, cb) {
-        if (file.mimetype === 'application/gpx+xml' || file.originalname.endsWith('.gpx')) {
+        // Accept GPX files with various MIME types (iOS can send different types)
+        if (file.mimetype === 'application/gpx+xml' ||
+            file.mimetype === 'application/xml' ||
+            file.mimetype === 'text/xml' ||
+            file.mimetype === 'application/octet-stream' ||
+            file.originalname.toLowerCase().endsWith('.gpx')) {
             cb(null, gpxDir);
         } else if (file.mimetype.startsWith('image/')) {
             cb(null, photosDir);
         } else {
-            cb(new Error('Invalid file type'));
+            cb(new Error(`Invalid file type: ${file.mimetype} for ${file.originalname}`));
         }
     },
     filename: function (_req, file, cb) {

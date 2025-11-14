@@ -488,6 +488,11 @@ select {
     font-size: 0.85rem;
 }
 
+#deletePhotoBtn {
+    margin-top: 1rem;
+    width: 100%;
+}
+
 /* Modal Form Styles */
 .modal-form {
     max-width: 500px;

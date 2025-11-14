@@ -1,5 +1,12 @@
-// API Configuration
-const API_BASE_URL = 'http://localhost:8080/api';
+// API Configuration - auto-detect production vs local
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8080/api'
+    : `${window.location.protocol}//${window.location.host}/api`;
+
+// Base URL for static files (photos)
+const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8080'
+    : `${window.location.protocol}//${window.location.host}`;
 
 // Application State
 const state = {
@@ -53,6 +60,9 @@ function attachEventListeners() {
             document.getElementById('photoModal').classList.add('hidden');
         }
     });
+
+    // Delete photo button
+    document.getElementById('deletePhotoBtn').addEventListener('click', handlePhotoDelete);
 
     // Track Info Modal
     document.getElementById('closeTrackInfoModal').addEventListener('click', closeTrackInfoModal);
@@ -498,8 +508,8 @@ function addPhotoToMap(photo) {
         shadowSize: [41, 41]
     });
 
-    const photoUrl = `http://localhost:8080${photo.path}`;
-    const marker = L.marker([photo.latitude, photo.longitude], { icon })
+    const photoUrl = `${BASE_URL}${photo.path}`;
+    const marker = L.marker([photo.latitude, photo.longitude], { icon, photoId: photo.id })
         .bindPopup(`<h4>${photo.name}</h4><img src="${photoUrl}" style="max-width: 200px; border-radius: 4px;">`)
         .on('click', () => showPhotoModal(photo));
 
@@ -507,13 +517,63 @@ function addPhotoToMap(photo) {
 }
 
 // Show photo modal
+let currentPhotoId = null;
+
 function showPhotoModal(photo) {
-    const photoUrl = `http://localhost:8080${photo.path}`;
+    currentPhotoId = photo.id;
+    const photoUrl = `${BASE_URL}${photo.path}`;
     document.getElementById('modalImage').src = photoUrl;
     document.getElementById('modalPhotoName').textContent = photo.name;
     document.getElementById('modalPhotoLocation').textContent =
         `Coordonnées: ${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}`;
     document.getElementById('photoModal').classList.remove('hidden');
+}
+
+// Handle photo deletion
+async function handlePhotoDelete() {
+    if (!currentPhotoId) return;
+
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
+        return;
+    }
+
+    try {
+        // Find the photo to get its filename
+        const photo = state.photos.find(p => p.id === currentPhotoId);
+        if (!photo) {
+            alert('Photo introuvable');
+            return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/photos/${photo.filename}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Remove photo from state
+            state.photos = state.photos.filter(p => p.id !== currentPhotoId);
+
+            // Remove photo marker from map
+            state.layers.photos.eachLayer(layer => {
+                if (layer.options.photoId === currentPhotoId) {
+                    state.layers.photos.removeLayer(layer);
+                }
+            });
+
+            // Close modal
+            document.getElementById('photoModal').classList.add('hidden');
+            currentPhotoId = null;
+
+            alert('Photo supprimée avec succès');
+        } else {
+            alert('Erreur lors de la suppression de la photo');
+        }
+    } catch (error) {
+        console.error('Error deleting photo:', error);
+        alert('Erreur lors de la suppression de la photo');
+    }
 }
 
 // Show track info modal
@@ -850,7 +910,7 @@ function displayTrackPhotos(track) {
 
     container.innerHTML = track.photos.map(photo => `
         <div class="track-photo-item">
-            <img src="http://localhost:8080${photo.path}" alt="${photo.name}" onclick='showPhotoModal(${JSON.stringify(photo)})'>
+            <img src="${BASE_URL}${photo.path}" alt="${photo.name}" onclick='showPhotoModal(${JSON.stringify(photo)})'>
             <button class="delete-photo" onclick="deleteTrackPhoto('${photo.id}')" title="Supprimer">×</button>
         </div>
     `).join('');
@@ -1199,7 +1259,7 @@ function renderListView() {
         const photosHtml = track.photos && track.photos.length > 0
             ? `<div class="track-card-photos">
                 ${track.photos.slice(0, 5).map(photo =>
-                    `<img src="http://localhost:8080${photo.path}"
+                    `<img src="${BASE_URL}${photo.path}"
                          alt="${photo.name}"
                          class="track-card-photo"
                          onclick='showPhotoModal(${JSON.stringify(photo)})'>`
