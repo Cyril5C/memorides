@@ -72,6 +72,7 @@ function attachEventListeners() {
     // Track Edit Modal
     document.getElementById('closeTrackEditModal').addEventListener('click', closeTrackEditModal);
     document.getElementById('cancelTrackEdit').addEventListener('click', closeTrackEditModal);
+    document.getElementById('deleteTrackBtn').addEventListener('click', handleTrackDelete);
     document.getElementById('trackEditForm').addEventListener('submit', handleTrackEdit);
     document.getElementById('trackEditModal').addEventListener('click', (e) => {
         if (e.target.id === 'trackEditModal') {
@@ -788,7 +789,6 @@ function editTrack(trackId) {
     // Fill form with current values
     document.getElementById('editTrackTitle').value = track.title || '';
     document.getElementById('editTrackType').value = track.type || 'hiking';
-    document.getElementById('editTrackDirection').value = track.direction || 'one-way';
     document.getElementById('editTrackComments').value = track.comments || '';
 
     // Load labels from new structure
@@ -907,7 +907,6 @@ async function handleTrackEdit(event) {
 
     const title = document.getElementById('editTrackTitle').value;
     const type = document.getElementById('editTrackType').value;
-    const direction = document.getElementById('editTrackDirection').value;
     const comments = document.getElementById('editTrackComments').value;
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
 
@@ -920,7 +919,6 @@ async function handleTrackEdit(event) {
             body: JSON.stringify({
                 title: title || null,
                 type: type,
-                direction: direction,
                 comments: comments || null,
                 labels: labels // Send array of label names
             })
@@ -945,6 +943,61 @@ async function handleTrackEdit(event) {
     } catch (error) {
         console.error('Error updating track:', error);
         alert('Erreur lors de la mise à jour de la trace');
+    }
+}
+
+// Handle track deletion
+async function handleTrackDelete() {
+    if (!currentEditingTrackId) return;
+
+    const track = state.tracks.find(t => t.id.toString() === currentEditingTrackId.toString());
+    if (!track) return;
+
+    // Confirm deletion
+    const confirmed = confirm(
+        `Êtes-vous sûr de vouloir supprimer la trace "${track.title || track.name}" ?\n\n` +
+        `Cela supprimera :\n` +
+        `- Le fichier GPX\n` +
+        `- Toutes les données de la base de données\n` +
+        `- Toutes les photos associées\n\n` +
+        `Cette action est irréversible.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Remove track from state
+            state.tracks = state.tracks.filter(t => t.id !== track.id);
+
+            // Remove track from map
+            if (state.trackLayers[track.id]) {
+                state.map.removeLayer(state.trackLayers[track.id]);
+                delete state.trackLayers[track.id];
+            }
+
+            // Re-render
+            renderTracks();
+            if (state.currentView === 'list') {
+                renderListView();
+            }
+
+            // Close modal
+            closeTrackEditModal();
+
+            alert('Trace supprimée avec succès !');
+        } else {
+            alert('Erreur lors de la suppression de la trace');
+        }
+    } catch (error) {
+        console.error('Error deleting track:', error);
+        alert('Erreur lors de la suppression de la trace');
     }
 }
 

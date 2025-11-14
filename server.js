@@ -306,17 +306,39 @@ app.delete('/api/gpx/:filename', async (req, res) => {
         const { filename } = req.params;
         const filePath = path.join(gpxDir, filename);
 
-        // Delete from database
+        // Get track with associated photos first
+        const track = await prisma.track.findUnique({
+            where: { filename },
+            include: {
+                photos: true
+            }
+        });
+
+        if (!track) {
+            return res.status(404).json({ error: 'Track not found' });
+        }
+
+        // Delete associated photo files
+        if (track.photos && track.photos.length > 0) {
+            for (const photo of track.photos) {
+                const photoPath = path.join(photosDir, photo.filename);
+                if (fs.existsSync(photoPath)) {
+                    fs.unlinkSync(photoPath);
+                }
+            }
+        }
+
+        // Delete from database (cascade will delete photos, labels relations)
         await prisma.track.delete({
             where: { filename }
         });
 
-        // Delete file
+        // Delete GPX file
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
 
-        res.json({ success: true, message: 'Track deleted' });
+        res.json({ success: true, message: 'Track and associated data deleted' });
     } catch (error) {
         console.error('Error deleting GPX file:', error);
         res.status(500).json({ error: 'Error deleting file' });
