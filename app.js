@@ -224,8 +224,11 @@ function parseGPX(gpxText) {
                 const lat = parseFloat(trkpt.getAttribute('lat'));
                 const lon = parseFloat(trkpt.getAttribute('lon'));
 
-                // Skip invalid coordinates
-                if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+                // Skip invalid coordinates (NaN or out of valid range)
+                if (isNaN(lat) || isNaN(lon) ||
+                    lat < -90 || lat > 90 ||
+                    lon < -180 || lon > 180) {
+                    console.warn(`Skipping invalid coordinates: lat=${lat}, lon=${lon}`);
                     return;
                 }
 
@@ -249,8 +252,11 @@ function parseGPX(gpxText) {
             const lat = parseFloat(trkpt.getAttribute('lat'));
             const lon = parseFloat(trkpt.getAttribute('lon'));
 
-            // Skip invalid coordinates
-            if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+            // Skip invalid coordinates (NaN or out of valid range)
+            if (isNaN(lat) || isNaN(lon) ||
+                lat < -90 || lat > 90 ||
+                lon < -180 || lon > 180) {
+                console.warn(`Skipping invalid coordinates: lat=${lat}, lon=${lon}`);
                 return;
             }
 
