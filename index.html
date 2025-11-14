@@ -25,7 +25,7 @@
     <!-- Photo Modal -->
     <div id="photoModal" class="modal hidden">
         <div class="modal-content">
-            <button class="modal-close" id="closeModal">×</button>
+            <button class="modal-close" id="closeModal"></button>
             <img id="modalImage" src="" alt="">
             <div class="modal-info">
                 <h3 id="modalPhotoName"></h3>
@@ -37,7 +37,7 @@
     <!-- Upload Modal -->
     <div id="uploadModal" class="modal hidden">
         <div class="modal-content modal-form">
-            <button class="modal-close" id="closeUploadModal">×</button>
+            <button class="modal-close" id="closeUploadModal"></button>
             <h3>Ajouter une trace</h3>
             <div class="upload-options">
                 <label class="upload-option-btn">
@@ -55,7 +55,7 @@
     <!-- Track Info Modal -->
     <div id="trackInfoModal" class="modal hidden">
         <div class="modal-content modal-form">
-            <button class="modal-close" id="closeTrackInfoModal">×</button>
+            <button class="modal-close" id="closeTrackInfoModal"></button>
             <div id="trackInfoContent">
                 <h3 id="trackInfoTitle"></h3>
                 <div class="track-info-stats">
@@ -70,6 +70,10 @@
                     <div class="track-stat-item">
                         <span class="track-stat-label">Durée:</span>
                         <span id="trackInfoDuration" class="track-stat-value"></span>
+                    </div>
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Statut:</span>
+                        <span id="trackInfoCompleted" class="track-stat-value"></span>
                     </div>
                 </div>
                 <div id="trackInfoLabelsContainer" class="track-info-labels" style="display: none;">
@@ -91,7 +95,7 @@
     <!-- Track Edit Modal -->
     <div id="trackEditModal" class="modal hidden">
         <div class="modal-content modal-form">
-            <button class="modal-close" id="closeTrackEditModal">×</button>
+            <button class="modal-close" id="closeTrackEditModal"></button>
             <h3>Éditer la trace</h3>
             <form id="trackEditForm">
                 <div class="form-group">
@@ -106,6 +110,13 @@
                         <option value="gravel">Gravel</option>
                         <option value="road">Route</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="editTrackCompleted" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-text">Trace réalisée</span>
+                    </label>
                 </div>
                 <div class="form-group">
                     <label>Libellés:</label>
@@ -146,6 +157,9 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet Polyline Decorator for arrows -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
 
     <!-- EXIF reader for photo geotags -->
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>

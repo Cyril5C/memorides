@@ -6,6 +6,7 @@ const state = {
     map: null,
     tracks: [],
     photos: [],
+    labels: [], // All available labels
     layers: {
         tracks: {},
         photos: L.layerGroup()
@@ -19,6 +20,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', async () => {
     initMap();
     attachEventListeners();
+    await loadLabelsFromServer();
     await loadTracksFromServer();
     await loadPhotosFromServer();
 });
@@ -360,12 +362,35 @@ function addTrackToMap(track) {
         opacity: 0.7
     }).addTo(state.map);
 
-    // On click, show track info modal
+    // Add direction arrows along the track
+    const decorator = L.polylineDecorator(polyline, {
+        patterns: [
+            {
+                offset: '10%',
+                repeat: '15%',
+                symbol: L.Symbol.arrowHead({
+                    pixelSize: 15,
+                    polygon: false,
+                    pathOptions: {
+                        fillOpacity: 1,
+                        weight: 2,
+                        color: color,
+                        fill: true,
+                        stroke: true
+                    }
+                })
+            }
+        ]
+    }).addTo(state.map);
+
+    // On click, show track info modal (for both polyline and decorator)
     polyline.on('click', () => {
         showTrackInfoModal(track);
     });
 
-    state.layers.tracks[track.id] = polyline;
+    // Store both polyline and decorator in a layer group
+    const layerGroup = L.layerGroup([polyline, decorator]);
+    state.layers.tracks[track.id] = layerGroup;
 }
 
 // Handle Photo Upload
@@ -500,6 +525,7 @@ function showTrackInfoModal(track) {
     document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
     document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
     document.getElementById('trackInfoDuration').textContent = formatDuration(track.duration);
+    document.getElementById('trackInfoCompleted').textContent = track.completed ? '✅ Fait' : '📝 À faire';
 
     // Show/hide labels section
     const labelsContainer = document.getElementById('trackInfoLabelsContainer');
@@ -600,10 +626,12 @@ async function changeTrackColor(trackId, newColor) {
             if (result.success) {
                 track.color = newColor;
 
-                // Update the polyline color on the map
-                const layer = state.layers.tracks[track.id];
-                if (layer) {
-                    layer.setStyle({ color: newColor });
+                // Remove old layer and recreate with new color
+                const layerGroup = state.layers.tracks[track.id];
+                if (layerGroup) {
+                    state.map.removeLayer(layerGroup);
+                    delete state.layers.tracks[track.id];
+                    addTrackToMap(track);
                 }
             }
         } catch (error) {
@@ -761,23 +789,27 @@ async function loadPhotosFromServer() {
     }
 }
 
+// Load labels from server
+async function loadLabelsFromServer() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/labels/list`);
+        const result = await response.json();
+
+        if (result.success && result.labels) {
+            state.labels = result.labels.map(label => label.name).sort();
+        }
+    } catch (error) {
+        console.error('Error loading labels from server:', error);
+    }
+}
+
 // Edit track - open modal
 let currentEditingTrackId = null;
 let currentTrackLabels = [];
 
-// Get all unique labels from all tracks
+// Get all unique labels from database
 function getAllExistingLabels() {
-    const allLabels = new Set();
-    state.tracks.forEach(track => {
-        if (track.labels && Array.isArray(track.labels)) {
-            track.labels.forEach(trackLabel => {
-                if (trackLabel.label && trackLabel.label.name) {
-                    allLabels.add(trackLabel.label.name);
-                }
-            });
-        }
-    });
-    return Array.from(allLabels).sort();
+    return state.labels;
 }
 
 function editTrack(trackId) {
@@ -790,6 +822,7 @@ function editTrack(trackId) {
     document.getElementById('editTrackTitle').value = track.title || '';
     document.getElementById('editTrackType').value = track.type || 'hiking';
     document.getElementById('editTrackComments').value = track.comments || '';
+    document.getElementById('editTrackCompleted').checked = track.completed || false;
 
     // Load labels from new structure
     currentTrackLabels = [];
@@ -908,6 +941,7 @@ async function handleTrackEdit(event) {
     const title = document.getElementById('editTrackTitle').value;
     const type = document.getElementById('editTrackType').value;
     const comments = document.getElementById('editTrackComments').value;
+    const completed = document.getElementById('editTrackCompleted').checked;
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
 
     try {
@@ -920,6 +954,7 @@ async function handleTrackEdit(event) {
                 title: title || null,
                 type: type,
                 comments: comments || null,
+                completed: completed,
                 labels: labels // Send array of label names
             })
         });
@@ -929,6 +964,9 @@ async function handleTrackEdit(event) {
         if (result.success) {
             // Update local state with ALL fields from server response
             Object.assign(track, result.track);
+
+            // Reload labels list (new labels may have been added)
+            await loadLabelsFromServer();
 
             // Re-render tracks list
             renderTracks();
@@ -977,9 +1015,9 @@ async function handleTrackDelete() {
             state.tracks = state.tracks.filter(t => t.id !== track.id);
 
             // Remove track from map
-            if (state.trackLayers[track.id]) {
-                state.map.removeLayer(state.trackLayers[track.id]);
-                delete state.trackLayers[track.id];
+            if (state.layers.tracks[track.id]) {
+                state.map.removeLayer(state.layers.tracks[track.id]);
+                delete state.layers.tracks[track.id];
             }
 
             // Re-render

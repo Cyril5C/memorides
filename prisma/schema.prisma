@@ -22,6 +22,7 @@ model Track {
   distance  Float    // in kilometers
   elevation Float    // in meters
   duration  Float?   // in minutes
+  completed Boolean  @default(false) // false = 'à faire', true = 'fait'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   photos    Photo[]  // Photos associated with this track
@@ -29,6 +30,7 @@ model Track {
 
   @@index([createdAt])
   @@index([type])
+  @@index([completed])
 }
 
 model Label {

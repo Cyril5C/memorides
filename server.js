@@ -112,7 +112,7 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
 app.patch('/api/gpx/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        const { name, title, comments, labels, type, direction, color } = req.body;
+        const { name, title, comments, labels, type, direction, color, completed } = req.body;
 
         // First, get the track to get its ID
         const existingTrack = await prisma.track.findUnique({
@@ -132,7 +132,8 @@ app.patch('/api/gpx/:filename', async (req, res) => {
                 ...(comments !== undefined && { comments }),
                 ...(type && { type }),
                 ...(direction && { direction }),
-                ...(color && { color })
+                ...(color && { color }),
+                ...(completed !== undefined && { completed })
             }
         });
 
@@ -270,6 +271,22 @@ app.get('/api/photos/list', async (_req, res) => {
     }
 });
 
+// List all labels
+app.get('/api/labels/list', async (_req, res) => {
+    try {
+        const labels = await prisma.label.findMany({
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json({ success: true, labels });
+    } catch (error) {
+        console.error('Error listing labels:', error);
+        res.status(500).json({ error: 'Error listing labels' });
+    }
+});
+
 // Get GPX file content
 app.get('/api/gpx/:filename', async (req, res) => {
     try {
@@ -310,7 +327,8 @@ app.delete('/api/gpx/:filename', async (req, res) => {
         const track = await prisma.track.findUnique({
             where: { filename },
             include: {
-                photos: true
+                photos: true,
+                labels: true
             }
         });
 
@@ -318,30 +336,51 @@ app.delete('/api/gpx/:filename', async (req, res) => {
             return res.status(404).json({ error: 'Track not found' });
         }
 
-        // Delete associated photo files
+        console.log(`Deleting track: ${track.filename} (ID: ${track.id})`);
+        console.log(`- Photos to delete: ${track.photos?.length || 0}`);
+        console.log(`- Labels to delete: ${track.labels?.length || 0}`);
+
+        // Delete associated photo files and database entries
         if (track.photos && track.photos.length > 0) {
             for (const photo of track.photos) {
                 const photoPath = path.join(photosDir, photo.filename);
+                console.log(`Deleting photo file: ${photoPath}`);
                 if (fs.existsSync(photoPath)) {
                     fs.unlinkSync(photoPath);
                 }
+                // Delete photo from database
+                await prisma.photo.delete({
+                    where: { id: photo.id }
+                }).catch(err => console.error(`Error deleting photo ${photo.id}:`, err));
             }
         }
 
-        // Delete from database (cascade will delete photos, labels relations)
+        // Delete track-label relations
+        if (track.labels && track.labels.length > 0) {
+            console.log('Deleting track-label relations...');
+            await prisma.trackLabel.deleteMany({
+                where: { trackId: track.id }
+            });
+        }
+
+        // Delete from database
+        console.log('Deleting track from database...');
         await prisma.track.delete({
             where: { filename }
         });
 
         // Delete GPX file
         if (fs.existsSync(filePath)) {
+            console.log(`Deleting GPX file: ${filePath}`);
             fs.unlinkSync(filePath);
         }
 
+        console.log('Track deleted successfully');
         res.json({ success: true, message: 'Track and associated data deleted' });
     } catch (error) {
         console.error('Error deleting GPX file:', error);
-        res.status(500).json({ error: 'Error deleting file' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ error: 'Error deleting file', details: error.message });
     }
 });
 
