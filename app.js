@@ -207,23 +207,63 @@ function parseGPX(gpxText) {
     const nameElement = xmlDoc.querySelector('name');
     const name = nameElement ? nameElement.textContent : 'Trace sans nom';
 
-    // Get track points
-    const trkpts = xmlDoc.querySelectorAll('trkpt');
+    // Get track points - respect track segments to avoid straight lines
     const points = [];
 
-    trkpts.forEach(trkpt => {
-        const lat = parseFloat(trkpt.getAttribute('lat'));
-        const lon = parseFloat(trkpt.getAttribute('lon'));
-        const eleElement = trkpt.querySelector('ele');
-        const timeElement = trkpt.querySelector('time');
+    // Try to get track segments first (proper GPX structure)
+    const trksegs = xmlDoc.querySelectorAll('trkseg');
 
-        points.push({
-            lat,
-            lon,
-            ele: eleElement ? parseFloat(eleElement.textContent) : null,
-            time: timeElement ? new Date(timeElement.textContent) : null
+    if (trksegs.length > 0) {
+        // Process each segment separately
+        trksegs.forEach((trkseg, segIndex) => {
+            const trkpts = trkseg.querySelectorAll('trkpt');
+
+            trkpts.forEach((trkpt) => {
+                const lat = parseFloat(trkpt.getAttribute('lat'));
+                const lon = parseFloat(trkpt.getAttribute('lon'));
+
+                // Skip invalid coordinates
+                if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+                    return;
+                }
+
+                const eleElement = trkpt.querySelector('ele');
+                const timeElement = trkpt.querySelector('time');
+
+                points.push({
+                    lat,
+                    lon,
+                    ele: eleElement ? parseFloat(eleElement.textContent) : null,
+                    time: timeElement ? new Date(timeElement.textContent) : null,
+                    segment: segIndex // Track which segment this point belongs to
+                });
+            });
         });
-    });
+    } else {
+        // Fallback: if no segments, get all trkpt directly
+        const trkpts = xmlDoc.querySelectorAll('trkpt');
+
+        trkpts.forEach(trkpt => {
+            const lat = parseFloat(trkpt.getAttribute('lat'));
+            const lon = parseFloat(trkpt.getAttribute('lon'));
+
+            // Skip invalid coordinates
+            if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+                return;
+            }
+
+            const eleElement = trkpt.querySelector('ele');
+            const timeElement = trkpt.querySelector('time');
+
+            points.push({
+                lat,
+                lon,
+                ele: eleElement ? parseFloat(eleElement.textContent) : null,
+                time: timeElement ? new Date(timeElement.textContent) : null,
+                segment: 0
+            });
+        });
+    }
 
     return { name, points };
 }
@@ -363,73 +403,95 @@ function calculateBounds(points) {
 
 // Add track to map
 function addTrackToMap(track) {
-    const latLngs = track.points.map(p => [p.lat, p.lon]);
     const color = track.color || '#2563eb'; // Default blue color
+    const layers = [];
 
-    const polyline = L.polyline(latLngs, {
-        color: color,
-        weight: 6, // Increased from 4 for better touch on mobile
-        opacity: 0.7
-    }).addTo(state.map);
+    // Group points by segment to avoid straight lines between segments
+    const segments = {};
+    track.points.forEach(point => {
+        const segmentId = point.segment || 0;
+        if (!segments[segmentId]) {
+            segments[segmentId] = [];
+        }
+        segments[segmentId].push([point.lat, point.lon]);
+    });
 
-    // Add direction arrows along the track
-    const decorator = L.polylineDecorator(polyline, {
-        patterns: [
-            {
-                offset: '10%',
-                repeat: '15%',
-                symbol: L.Symbol.arrowHead({
-                    pixelSize: 15,
-                    polygon: false,
-                    pathOptions: {
-                        fillOpacity: 1,
-                        weight: 2,
-                        color: color,
-                        fill: true,
-                        stroke: true
-                    }
-                })
-            }
-        ]
-    }).addTo(state.map);
+    // Create a polyline for each segment
+    Object.values(segments).forEach(segmentPoints => {
+        if (segmentPoints.length < 2) return; // Skip segments with less than 2 points
 
-    // Add info marker at the start of the track
+        const polyline = L.polyline(segmentPoints, {
+            color: color,
+            weight: 6, // Increased from 4 for better touch on mobile
+            opacity: 0.7
+        }).addTo(state.map);
+
+        // Add direction arrows along this segment
+        const decorator = L.polylineDecorator(polyline, {
+            patterns: [
+                {
+                    offset: '10%',
+                    repeat: '15%',
+                    symbol: L.Symbol.arrowHead({
+                        pixelSize: 15,
+                        polygon: false,
+                        pathOptions: {
+                            fillOpacity: 1,
+                            weight: 2,
+                            color: color,
+                            fill: true,
+                            stroke: true
+                        }
+                    })
+                }
+            ]
+        }).addTo(state.map);
+
+        // Add click handler to each segment
+        polyline.on('click', () => {
+            showTrackInfoModal(track);
+        });
+
+        layers.push(polyline, decorator);
+    });
+
+    // Add info marker at the start of the first segment
     const typeIcon = getTypeIcon(track.type);
     const displayTitle = track.title || track.name;
+    const firstSegmentPoints = Object.values(segments)[0];
 
-    const startMarker = L.marker(latLngs[0], {
-        icon: L.divIcon({
-            className: 'track-info-marker',
-            html: `<div class="track-info-marker-content" style="background-color: ${color}">
-                      <span style="font-size: 16px;">${typeIcon}</span>
-                   </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
-        })
-    }).addTo(state.map);
+    if (firstSegmentPoints && firstSegmentPoints.length > 0) {
+        const startMarker = L.marker(firstSegmentPoints[0], {
+            icon: L.divIcon({
+                className: 'track-info-marker',
+                html: `<div class="track-info-marker-content" style="background-color: ${color}">
+                          <span style="font-size: 16px;">${typeIcon}</span>
+                       </div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            })
+        }).addTo(state.map);
 
-    // Bind popup to marker
-    startMarker.bindPopup(`
-        <div style="text-align: center;">
-            <strong>${displayTitle}</strong><br>
-            <button onclick="showTrackInfoModal(state.tracks.find(t => t.id === '${track.id}'))"
-                    style="margin-top: 8px; padding: 6px 12px; background: ${color}; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                📋 Voir les détails
-            </button>
-        </div>
-    `);
+        // Bind popup to marker
+        startMarker.bindPopup(`
+            <div style="text-align: center;">
+                <strong>${displayTitle}</strong><br>
+                <button onclick="showTrackInfoModal(state.tracks.find(t => t.id === '${track.id}'))"
+                        style="margin-top: 8px; padding: 6px 12px; background: ${color}; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    📋 Voir les détails
+                </button>
+            </div>
+        `);
 
-    // On click, show track info modal (for both polyline and decorator)
-    polyline.on('click', () => {
-        showTrackInfoModal(track);
-    });
+        startMarker.on('click', () => {
+            showTrackInfoModal(track);
+        });
 
-    startMarker.on('click', () => {
-        showTrackInfoModal(track);
-    });
+        layers.push(startMarker);
+    }
 
-    // Store polyline, decorator and marker in a layer group
-    const layerGroup = L.layerGroup([polyline, decorator, startMarker]);
+    // Store all polylines, decorators and marker in a layer group
+    const layerGroup = L.layerGroup(layers);
     state.layers.tracks[track.id] = layerGroup;
 }
 
