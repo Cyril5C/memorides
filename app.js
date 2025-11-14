@@ -691,7 +691,18 @@ function showTrackInfoModal(track) {
     document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
     document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
     document.getElementById('trackInfoDuration').textContent = formatDuration(track.duration);
-    document.getElementById('trackInfoCompleted').textContent = track.completed ? '✅ Fait' : '📝 À faire';
+    // Display completion status
+    if (track.completedAt) {
+        const date = new Date(track.completedAt);
+        const formattedDate = date.toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        document.getElementById('trackInfoCompleted').textContent = `✅ Réalisé le ${formattedDate}`;
+    } else {
+        document.getElementById('trackInfoCompleted').textContent = '📝 Projet à réaliser';
+    }
 
     // Show/hide labels section
     const labelsContainer = document.getElementById('trackInfoLabelsContainer');
@@ -998,7 +1009,14 @@ function editTrack(trackId) {
     document.getElementById('editTrackTitle').value = track.title || '';
     document.getElementById('editTrackType').value = track.type || 'hiking';
     document.getElementById('editTrackComments').value = track.comments || '';
-    document.getElementById('editTrackCompleted').checked = track.completed || false;
+
+    // Set completed date (format: YYYY-MM-DD for input type="date")
+    if (track.completedAt) {
+        const date = new Date(track.completedAt);
+        document.getElementById('editTrackCompletedAt').value = date.toISOString().split('T')[0];
+    } else {
+        document.getElementById('editTrackCompletedAt').value = '';
+    }
 
     // Load labels from new structure
     currentTrackLabels = [];
@@ -1117,7 +1135,7 @@ async function handleTrackEdit(event) {
     const title = document.getElementById('editTrackTitle').value;
     const type = document.getElementById('editTrackType').value;
     const comments = document.getElementById('editTrackComments').value;
-    const completed = document.getElementById('editTrackCompleted').checked;
+    const completedAt = document.getElementById('editTrackCompletedAt').value; // YYYY-MM-DD or empty string
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
 
     try {
@@ -1130,7 +1148,7 @@ async function handleTrackEdit(event) {
                 title: title || null,
                 type: type,
                 comments: comments || null,
-                completed: completed,
+                completedAt: completedAt || null,
                 labels: labels // Send array of label names
             })
         });

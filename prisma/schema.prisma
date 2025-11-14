@@ -11,26 +11,26 @@ datasource db {
 }
 
 model Track {
-  id        String   @id @default(cuid())
-  filename  String   @unique
-  name      String
-  title     String?  // Custom title for the track
-  comments  String?  // User comments about the track
-  type      String   // 'hiking', 'cycling', 'gravel', or 'road'
-  direction String   @default("one-way") // 'one-way', 'round-trip', or 'loop'
-  color     String   @default("#2563eb")
-  distance  Float    // in kilometers
-  elevation Float    // in meters
-  duration  Float?   // in minutes
-  completed Boolean  @default(false) // false = 'à faire', true = 'fait'
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  photos    Photo[]  // Photos associated with this track
-  labels    TrackLabel[]  // Labels associated with this track
+  id           String    @id @default(cuid())
+  filename     String    @unique
+  name         String
+  title        String?   // Custom title for the track
+  comments     String?   // User comments about the track
+  type         String    // 'hiking', 'cycling', 'gravel', or 'road'
+  direction    String    @default("one-way") // 'one-way', 'round-trip', or 'loop'
+  color        String    @default("#2563eb")
+  distance     Float     // in kilometers
+  elevation    Float     // in meters
+  duration     Float?    // in minutes
+  completedAt  DateTime? // Date when the track was completed (null = project/to-do)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  photos       Photo[]   // Photos associated with this track
+  labels       TrackLabel[]  // Labels associated with this track
 
   @@index([createdAt])
   @@index([type])
-  @@index([completed])
+  @@index([completedAt])
 }
 
 model Label {
