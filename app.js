@@ -931,6 +931,13 @@ async function loadTracksFromServer() {
             for (const trackData of result.tracks) {
                 // Get GPX content
                 const contentResponse = await fetch(`${API_BASE_URL}/gpx/${trackData.filename}`);
+
+                // Skip if file not found (happens when volume is not persistent)
+                if (!contentResponse.ok) {
+                    console.warn(`GPX file not found: ${trackData.filename} - skipping`);
+                    continue;
+                }
+
                 const contentResult = await contentResponse.json();
 
                 if (contentResult.success) {
