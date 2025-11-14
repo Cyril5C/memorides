@@ -34,7 +34,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Initialize Leaflet Map
 function initMap() {
-    state.map = L.map('map').setView([45.5, 2.5], 6);
+    state.map = L.map('map', {
+        zoomControl: false // Disable default zoom control
+    }).setView([45.5, 2.5], 6);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -455,33 +457,25 @@ function addTrackToMap(track) {
         layers.push(polyline, decorator);
     });
 
-    // Add info marker at the start of the first segment
+    // Add markers at the start and end of the track
     const typeIcon = getTypeIcon(track.type);
     const displayTitle = track.title || track.name;
-    const firstSegmentPoints = Object.values(segments)[0];
+    const segmentArray = Object.values(segments);
+    const firstSegmentPoints = segmentArray[0];
+    const lastSegmentPoints = segmentArray[segmentArray.length - 1];
 
+    // Start marker
     if (firstSegmentPoints && firstSegmentPoints.length > 0) {
         const startMarker = L.marker(firstSegmentPoints[0], {
             icon: L.divIcon({
                 className: 'track-info-marker',
-                html: `<div class="track-info-marker-content" style="background-color: ${color}">
+                html: `<div class="track-info-marker-content track-start-marker" style="background-color: ${color}">
                           <span style="font-size: 16px;">${typeIcon}</span>
                        </div>`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 16]
             })
         }).addTo(state.map);
-
-        // Bind popup to marker
-        startMarker.bindPopup(`
-            <div style="text-align: center;">
-                <strong>${displayTitle}</strong><br>
-                <button onclick="showTrackInfoModal(state.tracks.find(t => t.id === '${track.id}'))"
-                        style="margin-top: 8px; padding: 6px 12px; background: ${color}; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    📋 Voir les détails
-                </button>
-            </div>
-        `);
 
         startMarker.on('click', () => {
             showTrackInfoModal(track);
@@ -490,7 +484,27 @@ function addTrackToMap(track) {
         layers.push(startMarker);
     }
 
-    // Store all polylines, decorators and marker in a layer group
+    // End marker (checkered flag)
+    if (lastSegmentPoints && lastSegmentPoints.length > 0) {
+        const endMarker = L.marker(lastSegmentPoints[lastSegmentPoints.length - 1], {
+            icon: L.divIcon({
+                className: 'track-info-marker',
+                html: `<div class="track-info-marker-content track-end-marker" style="background-color: ${color}">
+                          <span style="font-size: 16px;">🏁</span>
+                       </div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            })
+        }).addTo(state.map);
+
+        endMarker.on('click', () => {
+            showTrackInfoModal(track);
+        });
+
+        layers.push(endMarker);
+    }
+
+    // Store all polylines, decorators and markers in a layer group
     const layerGroup = L.layerGroup(layers);
     state.layers.tracks[track.id] = layerGroup;
 }
