@@ -152,6 +152,15 @@ header p {
     background-color: #1d4ed8;
 }
 
+/* Improve touch targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        min-height: 44px; /* iOS minimum touch target */
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    }
+}
+
 .btn-secondary {
     background-color: var(--secondary-color);
     color: white;

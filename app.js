@@ -73,11 +73,18 @@ function attachEventListeners() {
             closeTrackInfoModal();
         }
     });
-    document.getElementById('editTrackFromInfo').addEventListener('click', () => {
-        const trackId = document.getElementById('editTrackFromInfo').dataset.trackId;
+    // Edit button - support both click and touch events for iOS
+    const editBtn = document.getElementById('editTrackFromInfo');
+    const handleEdit = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const trackId = editBtn.dataset.trackId;
+        console.log('Edit button clicked, trackId:', trackId);
         closeTrackInfoModal();
         editTrack(trackId);
-    });
+    };
+    editBtn.addEventListener('click', handleEdit);
+    editBtn.addEventListener('touchend', handleEdit);
     document.getElementById('downloadTrackFromInfo').addEventListener('click', () => {
         const trackId = document.getElementById('downloadTrackFromInfo').dataset.trackId;
         downloadTrack(trackId);
