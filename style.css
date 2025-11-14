@@ -1184,3 +1184,27 @@ select {
     font-weight: 500;
     flex-grow: 1;
 }
+
+/* Track Info Marker on Map */
+.track-info-marker {
+    background: transparent;
+    border: none;
+}
+
+.track-info-marker-content {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    border: 3px solid white;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.track-info-marker-content:hover {
+    transform: scale(1.1);
+}

@@ -368,7 +368,7 @@ function addTrackToMap(track) {
 
     const polyline = L.polyline(latLngs, {
         color: color,
-        weight: 4,
+        weight: 6, // Increased from 4 for better touch on mobile
         opacity: 0.7
     }).addTo(state.map);
 
@@ -393,13 +393,43 @@ function addTrackToMap(track) {
         ]
     }).addTo(state.map);
 
+    // Add info marker at the start of the track
+    const typeIcon = getTypeIcon(track.type);
+    const displayTitle = track.title || track.name;
+
+    const startMarker = L.marker(latLngs[0], {
+        icon: L.divIcon({
+            className: 'track-info-marker',
+            html: `<div class="track-info-marker-content" style="background-color: ${color}">
+                      <span style="font-size: 16px;">${typeIcon}</span>
+                   </div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        })
+    }).addTo(state.map);
+
+    // Bind popup to marker
+    startMarker.bindPopup(`
+        <div style="text-align: center;">
+            <strong>${displayTitle}</strong><br>
+            <button onclick="showTrackInfoModal(state.tracks.find(t => t.id === '${track.id}'))"
+                    style="margin-top: 8px; padding: 6px 12px; background: ${color}; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                📋 Voir les détails
+            </button>
+        </div>
+    `);
+
     // On click, show track info modal (for both polyline and decorator)
     polyline.on('click', () => {
         showTrackInfoModal(track);
     });
 
-    // Store both polyline and decorator in a layer group
-    const layerGroup = L.layerGroup([polyline, decorator]);
+    startMarker.on('click', () => {
+        showTrackInfoModal(track);
+    });
+
+    // Store polyline, decorator and marker in a layer group
+    const layerGroup = L.layerGroup([polyline, decorator, startMarker]);
     state.layers.tracks[track.id] = layerGroup;
 }
 
