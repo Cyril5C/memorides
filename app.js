@@ -772,13 +772,23 @@ function closeTrackEditModal() {
 // Add label
 function addLabel(labelText = null) {
     const input = document.getElementById('newLabel');
-    const label = labelText || input.value.trim();
+
+    // Check if labelText is an event object (from button click) or actual text
+    let label;
+    if (labelText && typeof labelText === 'string') {
+        label = labelText.trim();
+    } else {
+        label = input.value.trim();
+    }
 
     if (label && !currentTrackLabels.includes(label)) {
         currentTrackLabels.push(label);
         renderLabels();
         renderLabelSuggestions();
-        if (!labelText) input.value = '';
+        // Only clear input if we got the value from the input field
+        if (!labelText || typeof labelText !== 'string') {
+            input.value = '';
+        }
     }
 }
 
