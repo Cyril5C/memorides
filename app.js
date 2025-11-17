@@ -67,8 +67,8 @@ function attachEventListeners() {
     // Delete photo button
     document.getElementById('deletePhotoBtn').addEventListener('click', handlePhotoDelete);
 
-    // Track Info Modal
-    document.getElementById('closeTrackInfoModal').addEventListener('click', closeTrackInfoModal);
+    // Track Info Modal - clickable title to close
+    document.getElementById('trackInfoTitle').addEventListener('click', closeTrackInfoModal);
     document.getElementById('trackInfoModal').addEventListener('click', (e) => {
         if (e.target.id === 'trackInfoModal') {
             closeTrackInfoModal();
