@@ -293,7 +293,7 @@ function guessActivityType(name) {
     if (nameLower.includes('rando') || nameLower.includes('hiking') || nameLower.includes('marche')) {
         return 'hiking';
     }
-    return 'hiking'; // Default
+    return 'gravel'; // Default
 }
 
 // Calculate total distance
