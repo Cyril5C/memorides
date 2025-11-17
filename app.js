@@ -1220,10 +1220,6 @@ function removeLabel(index) {
     renderLabelSuggestions();
 }
 
-// Expose functions globally for onclick handlers
-window.addLabel = addLabel;
-window.removeLabel = removeLabel;
-
 // Render labels
 function renderLabels() {
     const container = document.getElementById('labelsDisplay');
@@ -1236,9 +1232,17 @@ function renderLabels() {
     container.innerHTML = currentTrackLabels.map((label, index) => `
         <span class="label-tag">
             ${label}
-            <button type="button" class="label-tag-remove" onclick="removeLabel(${index})" title="Supprimer">×</button>
+            <button type="button" class="label-tag-remove" data-index="${index}" title="Supprimer">×</button>
         </span>
     `).join('');
+
+    // Attach event listeners to remove buttons
+    container.querySelectorAll('.label-tag-remove').forEach(button => {
+        button.addEventListener('click', () => {
+            const index = parseInt(button.dataset.index);
+            removeLabel(index);
+        });
+    });
 }
 
 // Render label suggestions
@@ -1254,10 +1258,17 @@ function renderLabelSuggestions() {
     container.innerHTML = existingLabels.map(label => {
         const isAlreadyAdded = currentTrackLabels.includes(label);
         const disabledClass = isAlreadyAdded ? ' disabled' : '';
-        const onclick = isAlreadyAdded ? '' : `onclick="addLabel('${label.replace(/'/g, "\\'")}')"`;
 
-        return `<span class="label-suggestion${disabledClass}" ${onclick}>${label}</span>`;
+        return `<span class="label-suggestion${disabledClass}" data-label="${label.replace(/"/g, '&quot;')}">${label}</span>`;
     }).join('');
+
+    // Attach event listeners to suggestion buttons
+    container.querySelectorAll('.label-suggestion:not(.disabled)').forEach(span => {
+        span.addEventListener('click', () => {
+            const label = span.dataset.label;
+            addLabel(label);
+        });
+    });
 }
 
 // Handle track edit form submission
