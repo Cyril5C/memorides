@@ -976,20 +976,25 @@ app.listen(PORT, '0.0.0.0', async () => {
         await prisma.$queryRaw`SELECT 1`;
         console.log('✅ Database connection verified');
 
-        // Seed track types if table is empty
-        const trackTypesCount = await prisma.trackType.count();
-        if (trackTypesCount === 0) {
-            console.log('🌱 Seeding track types...');
-            const trackTypes = [
-                { value: 'hiking', label: 'Randonnée', icon: '🥾', order: 1 },
-                { value: 'cycling', label: 'Vélo route', icon: '🚴', order: 2 },
-                { value: 'gravel', label: 'Gravel', icon: '🚵', order: 3 }
-            ];
+        // Check if TrackType table exists and seed if needed
+        try {
+            const trackTypesCount = await prisma.trackType.count();
+            if (trackTypesCount === 0) {
+                console.log('🌱 Seeding track types...');
+                const trackTypes = [
+                    { value: 'hiking', label: 'Randonnée', icon: '🥾', order: 1 },
+                    { value: 'cycling', label: 'Vélo route', icon: '🚴', order: 2 },
+                    { value: 'gravel', label: 'Gravel', icon: '🚵', order: 3 }
+                ];
 
-            for (const type of trackTypes) {
-                await prisma.trackType.create({ data: type });
+                for (const type of trackTypes) {
+                    await prisma.trackType.create({ data: type });
+                }
+                console.log('✅ Track types seeded successfully');
             }
-            console.log('✅ Track types seeded successfully');
+        } catch (tableError) {
+            console.log('⚠️  TrackType table not found, it will be created on next deploy with prisma db push');
+            console.log('   Run "npx prisma db push" manually in production to create the table');
         }
     } catch (error) {
         console.error('⚠️  Database connection failed:', error.message);
