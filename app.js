@@ -1033,12 +1033,18 @@ function formatDuration(minutes) {
 }
 
 // Load tracks from server
-async function loadTracksFromServer() {
+async function loadTracksFromServer(retryCount = 0) {
     try {
         console.log('Loading tracks from:', API_BASE_URL);
         const response = await fetch(`${API_BASE_URL}/gpx/list`);
 
         if (!response.ok) {
+            // Retry once on first load before showing error (handles PWA first-load race condition)
+            if (retryCount === 0) {
+                console.log('First load failed, retrying in 1 second...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return loadTracksFromServer(1);
+            }
             console.error('Failed to fetch tracks:', response.status, response.statusText);
             alert(`Erreur lors du chargement des traces: ${response.status}`);
             return;
@@ -1083,6 +1089,12 @@ async function loadTracksFromServer() {
 
         renderTracks();
     } catch (error) {
+        // Retry once on first load before showing error (handles PWA first-load race condition)
+        if (retryCount === 0) {
+            console.log('First load error, retrying in 1 second...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return loadTracksFromServer(1);
+        }
         console.error('Error loading tracks from server:', error);
         alert(`Erreur lors du chargement des traces: ${error.message}`);
     }
