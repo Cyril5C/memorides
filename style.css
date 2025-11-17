@@ -1237,7 +1237,7 @@ select {
 }
 
 .modal-fullscreen #trackInfoContent h3 {
-    margin-top: 0;
+    margin-top: 50;
     padding-top: 0;
 }
 
@@ -1251,7 +1251,7 @@ select {
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: 1rem;
-    margin-top: 2rem; /* Extra space at top on mobile */
+    margin-top: 102px; /* 100px lower from original 2rem */
     background: var(--primary-color);
     color: white;
     border-radius: 0;
