@@ -1187,6 +1187,17 @@ async function handleTrackEdit(event) {
             // Reload labels list (new labels may have been added)
             await loadLabelsFromServer();
 
+            // Redraw the track on the map with new color
+            if (state.layers.tracks[track.id]) {
+                // Remove old layer from map
+                state.layers.tracks[track.id].clearLayers();
+                state.map.removeLayer(state.layers.tracks[track.id]);
+                delete state.layers.tracks[track.id];
+
+                // Redraw with new color
+                addTrackToMap(track);
+            }
+
             // Re-render tracks list
             renderTracks();
 
