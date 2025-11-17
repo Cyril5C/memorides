@@ -1,5 +1,5 @@
 // Service Worker for Memorides PWA
-const CACHE_VERSION = '1.1.7'; // Increment this on each deployment
+const CACHE_VERSION = '1.1.8'; // Increment this on each deployment
 const CACHE_NAME = `memorides-v${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   '/',
