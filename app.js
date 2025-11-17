@@ -1030,6 +1030,7 @@ function editTrack(trackId) {
     // Fill form with current values
     document.getElementById('editTrackTitle').value = track.title || '';
     document.getElementById('editTrackType').value = track.type || 'hiking';
+    document.getElementById('editTrackColor').value = track.color || '#2563eb';
     document.getElementById('editTrackComments').value = track.comments || '';
 
     // Set completed date (format: YYYY-MM-DD for input type="date")
@@ -1156,6 +1157,7 @@ async function handleTrackEdit(event) {
 
     const title = document.getElementById('editTrackTitle').value;
     const type = document.getElementById('editTrackType').value;
+    const color = document.getElementById('editTrackColor').value;
     const comments = document.getElementById('editTrackComments').value;
     const completedAt = document.getElementById('editTrackCompletedAt').value; // YYYY-MM-DD or empty string
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
@@ -1169,6 +1171,7 @@ async function handleTrackEdit(event) {
             body: JSON.stringify({
                 title: title || null,
                 type: type,
+                color: color,
                 comments: comments || null,
                 completedAt: completedAt || null,
                 labels: labels // Send array of label names
