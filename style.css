@@ -1248,7 +1248,9 @@ select {
     align-items: center;
     gap: 0.5rem;
     padding: 1rem 0.75rem;
-    margin: -1rem -1rem 1rem -1rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: 1rem;
     margin-top: 2rem; /* Extra space at top on mobile */
     background: var(--primary-color);
     color: white;
@@ -1283,7 +1285,9 @@ select {
 
     .clickable-title {
         border-radius: 8px;
-        margin: -0.5rem -0.5rem 1rem -0.5rem;
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+        margin-bottom: 1rem;
         margin-top: -0.5rem; /* Reset margin-top on desktop */
     }
 
