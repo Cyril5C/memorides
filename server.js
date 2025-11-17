@@ -149,12 +149,28 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
         // Extract metadata from request body
         const { name, title, comments, type, direction, color, distance, elevation, duration } = req.body;
 
+        // Read GPX file to extract name if title not provided
+        let gpxName = null;
+        if (!title) {
+            try {
+                const gpxContent = await fsPromises.readFile(req.file.path, 'utf8');
+                // Extract <name> tag from GPX (first occurrence, typically metadata name)
+                const nameMatch = gpxContent.match(/<name>(.*?)<\/name>/);
+                if (nameMatch && nameMatch[1]) {
+                    gpxName = nameMatch[1].trim();
+                }
+            } catch (error) {
+                console.error('Error reading GPX for name extraction:', error);
+                // Continue without GPX name
+            }
+        }
+
         // Save to database
         const track = await prisma.track.create({
             data: {
                 filename: req.file.filename,
                 name: name || req.file.originalname.replace('.gpx', ''),
-                title: title || null,
+                title: title || gpxName || null,
                 comments: comments || null,
                 type: type || 'hiking',
                 direction: direction || 'one-way',
