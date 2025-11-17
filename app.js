@@ -11,6 +11,7 @@ const BASE_URL = window.location.hostname === 'localhost' || window.location.hos
 // Application State
 const state = {
     map: null,
+    trackDetailMap: null, // Map for track detail modal
     tracks: [],
     photos: [],
     labels: [], // All available labels
@@ -740,12 +741,116 @@ function showTrackInfoModal(track) {
     document.getElementById('editTrackFromInfo').dataset.trackId = track.id;
     document.getElementById('downloadTrackFromInfo').dataset.trackId = track.id;
 
+    // Show modal
     document.getElementById('trackInfoModal').classList.remove('hidden');
+
+    // Initialize or reset track detail map
+    setTimeout(() => {
+        const mapContainer = document.getElementById('trackDetailMap');
+
+        // Clear existing map if any
+        if (state.trackDetailMap) {
+            state.trackDetailMap.remove();
+            state.trackDetailMap = null;
+        }
+
+        // Create new map
+        state.trackDetailMap = L.map('trackDetailMap', {
+            zoomControl: true
+        });
+
+        // Add tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(state.trackDetailMap);
+
+        // Draw the track on the detail map
+        const color = track.color || '#2563eb';
+
+        // Group points by segment
+        const segments = {};
+        track.points.forEach(point => {
+            const segmentId = point.segment || 0;
+            if (!segments[segmentId]) {
+                segments[segmentId] = [];
+            }
+            segments[segmentId].push([point.lat, point.lon]);
+        });
+
+        // Draw each segment
+        Object.values(segments).forEach(segmentPoints => {
+            if (segmentPoints.length < 2) return;
+
+            const polyline = L.polyline(segmentPoints, {
+                color: color,
+                weight: 4,
+                opacity: 0.7
+            }).addTo(state.trackDetailMap);
+
+            // Add direction arrows
+            L.polylineDecorator(polyline, {
+                patterns: [{
+                    offset: '10%',
+                    repeat: '15%',
+                    symbol: L.Symbol.arrowHead({
+                        pixelSize: 12,
+                        polygon: false,
+                        pathOptions: {
+                            fillOpacity: 1,
+                            weight: 2,
+                            color: color
+                        }
+                    })
+                }]
+            }).addTo(state.trackDetailMap);
+        });
+
+        // Add start and end markers
+        const segmentArray = Object.values(segments);
+        const firstSegmentPoints = segmentArray[0];
+        const lastSegmentPoints = segmentArray[segmentArray.length - 1];
+
+        if (firstSegmentPoints && firstSegmentPoints.length > 0) {
+            L.marker(firstSegmentPoints[0], {
+                icon: L.divIcon({
+                    className: 'track-info-marker',
+                    html: `<div class="track-info-marker-content track-start-marker" style="background-color: ${color}">
+                              <span style="font-size: 18px;">📍</span>
+                           </div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                })
+            }).addTo(state.trackDetailMap);
+        }
+
+        if (lastSegmentPoints && lastSegmentPoints.length > 0) {
+            L.marker(lastSegmentPoints[lastSegmentPoints.length - 1], {
+                icon: L.divIcon({
+                    className: 'track-info-marker',
+                    html: `<div class="track-info-marker-content track-end-marker" style="background-color: ${color}">
+                              <span style="font-size: 16px;">🏁</span>
+                           </div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                })
+            }).addTo(state.trackDetailMap);
+        }
+
+        // Fit bounds to show entire track
+        state.trackDetailMap.fitBounds(track.bounds, { padding: [30, 30] });
+    }, 100); // Small delay to ensure modal is visible
 }
 
 // Close track info modal
 function closeTrackInfoModal() {
     document.getElementById('trackInfoModal').classList.add('hidden');
+
+    // Clean up track detail map
+    if (state.trackDetailMap) {
+        state.trackDetailMap.remove();
+        state.trackDetailMap = null;
+    }
 }
 
 // Render tracks list (simplified - no sidebar)

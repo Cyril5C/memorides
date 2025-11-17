@@ -66,11 +66,15 @@
     </div>
 
     <!-- Track Info Modal -->
-    <div id="trackInfoModal" class="modal hidden">
-        <div class="modal-content modal-form">
+    <div id="trackInfoModal" class="modal modal-fullscreen hidden">
+        <div class="modal-content modal-fullscreen-content">
             <button class="modal-close" id="closeTrackInfoModal"></button>
             <div id="trackInfoContent">
                 <h3 id="trackInfoTitle"></h3>
+
+                <!-- Map container for the track -->
+                <div id="trackDetailMap" style="height: 300px; width: 100%; margin: 1rem 0; border-radius: 8px; overflow: hidden;"></div>
+
                 <div class="track-info-stats">
                     <div class="track-stat-item">
                         <span class="track-stat-label">Distance:</span>
