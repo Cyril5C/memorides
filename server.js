@@ -494,6 +494,17 @@ app.delete('/api/photos/:filename', async (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
 
+// Admin list files endpoint (temporary)
+app.get('/api/admin/list-files', async (_req, res) => {
+    try {
+        const gpxFiles = await fsPromises.readdir(gpxDir).catch(() => []);
+        res.json({ files: gpxFiles.sort() });
+    } catch (error) {
+        console.error('List files error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Admin consistency check endpoint (temporary)
 app.get('/api/admin/consistency', async (_req, res) => {
     try {
