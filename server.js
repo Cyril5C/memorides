@@ -25,10 +25,11 @@ const prisma = new PrismaClient({
 
 // Security: Sanitize filenames to prevent path traversal attacks
 function sanitizeFilename(filename) {
-    // Extract basename to remove any path components
+    // Extract basename to remove any path components (removes ../ attacks)
     const basename = path.basename(filename);
-    // Remove all potentially dangerous characters
-    return basename.replace(/[^a-zA-Z0-9._-]/g, '');
+    // Remove ONLY dangerous characters (null bytes, path separators)
+    // Keep Unicode characters, spaces, etc. for international filenames
+    return basename.replace(/[\x00-\x1f\x7f\/\\:*?"<>|]/g, '');
 }
 
 // Security: Rate limiters
