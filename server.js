@@ -9,6 +9,7 @@ const { PrismaClient } = require('@prisma/client');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
+const archiver = require('archiver');
 
 console.log('🔧 Initializing server...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
@@ -679,6 +680,119 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
     await prisma.$disconnect();
     process.exit(0);
+});
+
+// Export/Backup endpoint - creates a ZIP with GPX files, photos, and database CSV
+app.get('/api/export/backup', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString().split('T')[0];
+        const zipFilename = `memorides-backup-${timestamp}.zip`;
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // Maximum compression
+        });
+
+        archive.on('error', (err) => {
+            console.error('Archive error:', err);
+            res.status(500).send('Error creating backup');
+        });
+
+        archive.pipe(res);
+
+        // Add GPX files
+        if (fs.existsSync(gpxDir)) {
+            archive.directory(gpxDir, 'gpx');
+        }
+
+        // Add photos
+        if (fs.existsSync(photosDir)) {
+            archive.directory(photosDir, 'photos');
+        }
+
+        // Generate and add database CSVs
+        // Tracks CSV
+        const tracks = await prisma.track.findMany({
+            include: {
+                labels: {
+                    include: {
+                        label: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const tracksCSV = [
+            'ID,Filename,Name,Title,Type,Direction,Color,Distance,Elevation,Duration,CompletedAt,Comments,Labels,CreatedAt,UpdatedAt',
+            ...tracks.map(t => [
+                t.id,
+                `"${t.filename}"`,
+                `"${t.name || ''}"`,
+                `"${t.title || ''}"`,
+                t.type,
+                t.direction,
+                t.color,
+                t.distance,
+                t.elevation,
+                t.duration || '',
+                t.completedAt ? new Date(t.completedAt).toISOString() : '',
+                `"${(t.comments || '').replace(/"/g, '""')}"`,
+                `"${t.labels.map(l => l.label.name).join(', ')}"`,
+                new Date(t.createdAt).toISOString(),
+                new Date(t.updatedAt).toISOString()
+            ].join(','))
+        ].join('\n');
+
+        archive.append(tracksCSV, { name: 'database/tracks.csv' });
+
+        // Labels CSV
+        const labels = await prisma.label.findMany({
+            orderBy: { name: 'asc' }
+        });
+
+        const labelsCSV = [
+            'ID,Name,CreatedAt',
+            ...labels.map(l => [
+                l.id,
+                `"${l.name}"`,
+                new Date(l.createdAt).toISOString()
+            ].join(','))
+        ].join('\n');
+
+        archive.append(labelsCSV, { name: 'database/labels.csv' });
+
+        // Photos CSV
+        const photos = await prisma.photo.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const photosCSV = [
+            'ID,Filename,Name,Path,Latitude,Longitude,TrackID,CreatedAt',
+            ...photos.map(p => [
+                p.id,
+                `"${p.filename}"`,
+                `"${p.name}"`,
+                `"${p.path}"`,
+                p.latitude,
+                p.longitude,
+                p.trackId || '',
+                new Date(p.createdAt).toISOString()
+            ].join(','))
+        ].join('\n');
+
+        archive.append(photosCSV, { name: 'database/photos.csv' });
+
+        // Finalize the archive
+        await archive.finalize();
+
+        console.log(`📦 Backup created: ${zipFilename}`);
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        res.status(500).json({ error: 'Failed to create backup' });
+    }
 });
 
 // Start server
