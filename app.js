@@ -712,9 +712,9 @@ function showTrackInfoModal(track) {
             month: 'long',
             day: 'numeric'
         });
-        document.getElementById('trackInfoCompleted').textContent = `✅ Réalisé le ${formattedDate}`;
+        document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
     } else {
-        document.getElementById('trackInfoCompleted').textContent = '📝 Projet à réaliser';
+        document.getElementById('trackInfoCompleted').textContent = '📝 A faire !';
     }
 
     // Show/hide labels section
@@ -843,12 +843,46 @@ function showTrackInfoModal(track) {
 
         // Fit bounds to show entire track
         state.trackDetailMap.fitBounds(track.bounds, { padding: [30, 30] });
+
+        // Setup expand/collapse button
+        const expandBtn = document.getElementById('expandMapBtn');
+        const mapElement = document.getElementById('trackDetailMap');
+
+        // Remove existing event listeners
+        const newExpandBtn = expandBtn.cloneNode(true);
+        expandBtn.parentNode.replaceChild(newExpandBtn, expandBtn);
+
+        // Add new event listener
+        newExpandBtn.addEventListener('click', () => {
+            mapElement.classList.toggle('expanded');
+
+            // Update button icon and title
+            if (mapElement.classList.contains('expanded')) {
+                newExpandBtn.textContent = '⤡';
+                newExpandBtn.title = 'Réduire la carte';
+            } else {
+                newExpandBtn.textContent = '⤢';
+                newExpandBtn.title = 'Agrandir la carte';
+            }
+
+            // Refresh map after animation
+            setTimeout(() => {
+                if (state.trackDetailMap) {
+                    state.trackDetailMap.invalidateSize();
+                    state.trackDetailMap.fitBounds(track.bounds, { padding: [30, 30] });
+                }
+            }, 300);
+        });
     }, 200); // Delay to ensure modal is visible and rendered
 }
 
 // Close track info modal
 function closeTrackInfoModal() {
     document.getElementById('trackInfoModal').classList.add('hidden');
+
+    // Remove expanded class from map
+    const mapElement = document.getElementById('trackDetailMap');
+    mapElement.classList.remove('expanded');
 
     // Clean up track detail map
     if (state.trackDetailMap) {

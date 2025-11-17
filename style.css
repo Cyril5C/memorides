@@ -185,6 +185,30 @@ header p {
     width: auto;
 }
 
+.expand-map-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 0.5rem;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    box-shadow: var(--shadow);
+    z-index: 1000;
+    transition: all 0.2s;
+}
+
+.expand-map-btn:active {
+    transform: scale(0.95);
+    background: var(--bg-color);
+}
+
 select {
     padding: 0.75rem;
     border: 1px solid var(--border-color);
@@ -1296,4 +1320,10 @@ select {
     #trackDetailMap {
         height: 400px !important;
     }
+}
+
+/* Expanded map state */
+#trackDetailMap.expanded {
+    height: 70vh !important;
+    transition: height 0.3s ease;
 }
