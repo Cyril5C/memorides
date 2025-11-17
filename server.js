@@ -381,15 +381,51 @@ app.get('/api/photos/list', async (_req, res) => {
 app.get('/api/labels/list', async (_req, res) => {
     try {
         const labels = await prisma.label.findMany({
+            include: {
+                tracks: true
+            },
             orderBy: {
                 name: 'asc'
             }
         });
 
-        res.json({ success: true, labels });
+        // Add track count to each label
+        const labelsWithCount = labels.map(label => ({
+            ...label,
+            trackCount: label.tracks.length,
+            tracks: undefined // Remove the tracks array from response
+        }));
+
+        res.json({ success: true, labels: labelsWithCount });
     } catch (error) {
         console.error('Error listing labels:', error);
         res.status(500).json({ error: 'Error listing labels' });
+    }
+});
+
+// Delete a label
+app.delete('/api/labels/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // First, delete all TrackLabel associations
+        await prisma.trackLabel.deleteMany({
+            where: {
+                labelId: id
+            }
+        });
+
+        // Then delete the label itself
+        await prisma.label.delete({
+            where: {
+                id: id
+            }
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting label:', error);
+        res.status(500).json({ error: 'Error deleting label' });
     }
 });
 

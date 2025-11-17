@@ -29,6 +29,7 @@
         <!-- Map View -->
         <div id="mapView" class="view-container active">
             <div id="map"></div>
+            <button class="settings-btn" id="settingsButton" title="Gérer les libellés">⚙️</button>
         </div>
 
         <!-- Floating Add Button -->
@@ -174,6 +175,17 @@
                     <button type="button" class="btn btn-danger" id="deleteTrackBtn">Supprimer la trace</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Labels Management Modal -->
+    <div id="labelsManagementModal" class="modal hidden">
+        <div class="modal-content modal-form">
+            <button class="modal-close" id="closeLabelsManagementModal"></button>
+            <h3>Gérer les libellés</h3>
+            <div id="labelsManagementList" class="labels-management-list">
+                <!-- Labels will be displayed here -->
+            </div>
         </div>
     </div>
 

@@ -115,6 +115,14 @@ function attachEventListeners() {
         }
     });
 
+    // Labels Management Modal
+    document.getElementById('settingsButton').addEventListener('click', showLabelsManagementModal);
+    document.getElementById('closeLabelsManagementModal').addEventListener('click', closeLabelsManagementModal);
+    document.getElementById('labelsManagementModal').addEventListener('click', (e) => {
+        if (e.target.id === 'labelsManagementModal') {
+            closeLabelsManagementModal();
+        }
+    });
 
     // FAB button - trigger GPX upload directly
     document.getElementById('fabButton').addEventListener('click', () => {
@@ -714,7 +722,7 @@ function showTrackInfoModal(track) {
         });
         document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
     } else {
-        document.getElementById('trackInfoCompleted').textContent = '📝 A faire !';
+        document.getElementById('trackInfoCompleted').textContent = 'A faire !';
     }
 
     // Show/hide labels section
@@ -1721,4 +1729,92 @@ function focusTrackFromList(trackId) {
 
     // Focus on the track
     setTimeout(() => focusTrack(trackId), 200);
+}
+
+// Show labels management modal
+async function showLabelsManagementModal() {
+    document.getElementById('labelsManagementModal').classList.remove('hidden');
+    await loadAndDisplayLabelsManagement();
+}
+
+// Close labels management modal
+function closeLabelsManagementModal() {
+    document.getElementById('labelsManagementModal').classList.add('hidden');
+}
+
+// Load and display labels in management modal
+async function loadAndDisplayLabelsManagement() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/labels/list`);
+        const result = await response.json();
+
+        if (result.success && result.labels) {
+            const container = document.getElementById('labelsManagementList');
+
+            if (result.labels.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Aucun libellé pour le moment</p>';
+                return;
+            }
+
+            container.innerHTML = result.labels.map(label => `
+                <div class="label-management-item">
+                    <div class="label-management-info">
+                        <span class="label-management-name">${label.name}</span>
+                        <span class="label-management-count">${label.trackCount} trace${label.trackCount > 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="label-management-actions">
+                        <button class="btn btn-danger btn-small" data-label-id="${label.id}" data-label-name="${label.name}">Supprimer</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Attach event listeners to delete buttons
+            container.querySelectorAll('.btn-danger').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const labelId = button.dataset.labelId;
+                    const labelName = button.dataset.labelName;
+                    await deleteLabel(labelId, labelName);
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Error loading labels:', error);
+        alert('Erreur lors du chargement des libellés');
+    }
+}
+
+// Delete a label
+async function deleteLabel(labelId, labelName) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le libellé "${labelName}" ?\nIl sera retiré de toutes les traces associées.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/labels/${labelId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload labels management list
+            await loadAndDisplayLabelsManagement();
+
+            // Reload labels from server to update suggestions
+            await loadLabelsFromServer();
+
+            // Reload tracks to update their labels
+            state.tracks = [];
+            Object.values(state.layers.tracks).forEach(layers => {
+                layers.forEach(layer => state.map.removeLayer(layer));
+            });
+            state.layers.tracks = {};
+            await loadTracksFromServer();
+        } else {
+            alert('Erreur lors de la suppression du libellé');
+        }
+    } catch (error) {
+        console.error('Error deleting label:', error);
+        alert('Erreur lors de la suppression du libellé');
+    }
 }
