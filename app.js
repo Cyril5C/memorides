@@ -909,8 +909,7 @@ function getTypeIcon(type) {
     const icons = {
         'hiking': '🥾',
         'cycling': '🚴',
-        'gravel': '🚵',
-        'road': '🚴‍♂️'
+        'gravel': '🚵'
     };
     return icons[type] || '🥾';
 }
