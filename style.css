@@ -1232,7 +1232,7 @@ select {
     height: 100dvh; /* Dynamic viewport height for mobile browsers */
     border-radius: 0;
     padding: 1rem;
-    padding-top: 70px; /* Extra padding for iPhone notch/Dynamic Island */
+    padding-top: 60px; /* Extra padding for iPhone notch/Dynamic Island */
     overflow-y: auto;
     margin: 0; /* Remove any margin */
 }
