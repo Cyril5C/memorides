@@ -1177,10 +1177,26 @@ function displayTrackPhotos(track) {
 
     container.innerHTML = track.photos.map(photo => `
         <div class="track-photo-item">
-            <img src="${BASE_URL}${photo.path}" alt="${photo.name}" onclick='showPhotoModal(${JSON.stringify(photo)})'>
-            <button class="delete-photo" onclick="deleteTrackPhoto('${photo.id}')" title="Supprimer">×</button>
+            <img src="${BASE_URL}${photo.path}" alt="${photo.name}" data-photo='${JSON.stringify(photo)}'>
+            <button class="delete-photo" data-photo-id="${photo.id}" title="Supprimer">×</button>
         </div>
     `).join('');
+
+    // Attach event listeners to photo images
+    container.querySelectorAll('.track-photo-item img').forEach(img => {
+        img.addEventListener('click', () => {
+            const photo = JSON.parse(img.dataset.photo);
+            showPhotoModal(photo);
+        });
+    });
+
+    // Attach event listeners to delete buttons
+    container.querySelectorAll('.delete-photo').forEach(button => {
+        button.addEventListener('click', () => {
+            const photoId = button.dataset.photoId;
+            deleteTrackPhoto(photoId);
+        });
+    });
 }
 
 // Close track edit modal
@@ -1557,14 +1573,14 @@ function renderListView() {
                     `<img src="${BASE_URL}${photo.path}"
                          alt="${photo.name}"
                          class="track-card-photo"
-                         onclick='showPhotoModal(${JSON.stringify(photo)})'>`
+                         data-photo='${JSON.stringify(photo)}'>`
                 ).join('')}
                 ${track.photos.length > 5 ? `<span style="color: var(--text-secondary); font-size: 0.9rem;">+${track.photos.length - 5} photos</span>` : ''}
                </div>`
             : '';
 
         return `
-            <div class="track-card">
+            <div class="track-card" data-track-id="${track.id}">
                 <div class="track-card-header">
                     <div class="track-card-title">
                         <h3>${typeIcon} ${displayTitle}</h3>
@@ -1573,7 +1589,7 @@ function renderListView() {
                     <input type="color"
                            value="${track.color}"
                            class="track-card-color"
-                           onchange="changeTrackColor('${track.id}', this.value)">
+                           data-track-id="${track.id}">
                 </div>
 
                 ${track.comments ? `<div class="track-card-comments">${track.comments}</div>` : ''}
@@ -1604,19 +1620,52 @@ function renderListView() {
                 ${photosHtml}
 
                 <div class="track-card-actions">
-                    <button class="btn btn-primary btn-small" onclick="focusTrackFromList('${track.id}')">
+                    <button class="btn btn-primary btn-small track-focus-btn">
                         🗺️ Voir sur la carte
                     </button>
-                    <button class="btn btn-secondary btn-small" onclick="editTrack('${track.id}')">
+                    <button class="btn btn-secondary btn-small track-edit-btn">
                         ✏️ Éditer
                     </button>
-                    <button class="btn btn-danger btn-small" onclick="deleteTrack('${track.id}')">
+                    <button class="btn btn-danger btn-small track-delete-btn">
                         🗑️ Supprimer
                     </button>
                 </div>
             </div>
         `;
     }).join('');
+
+    // Attach event listeners to photos
+    container.querySelectorAll('.track-card-photo').forEach(img => {
+        img.addEventListener('click', () => {
+            const photo = JSON.parse(img.dataset.photo);
+            showPhotoModal(photo);
+        });
+    });
+
+    // Attach event listeners to color inputs
+    container.querySelectorAll('.track-card-color').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const trackId = input.dataset.trackId;
+            changeTrackColor(trackId, e.target.value);
+        });
+    });
+
+    // Attach event listeners to action buttons
+    container.querySelectorAll('.track-card').forEach(card => {
+        const trackId = card.dataset.trackId;
+
+        card.querySelector('.track-focus-btn')?.addEventListener('click', () => {
+            focusTrackFromList(trackId);
+        });
+
+        card.querySelector('.track-edit-btn')?.addEventListener('click', () => {
+            editTrack(trackId);
+        });
+
+        card.querySelector('.track-delete-btn')?.addEventListener('click', () => {
+            deleteTrack(trackId);
+        });
+    });
 }
 
 // Focus track from list view
