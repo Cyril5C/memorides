@@ -909,6 +909,22 @@ app.listen(PORT, '0.0.0.0', async () => {
     try {
         await prisma.$queryRaw`SELECT 1`;
         console.log('✅ Database connection verified');
+
+        // Seed track types if table is empty
+        const trackTypesCount = await prisma.trackType.count();
+        if (trackTypesCount === 0) {
+            console.log('🌱 Seeding track types...');
+            const trackTypes = [
+                { value: 'hiking', label: 'Randonnée', icon: '🥾', order: 1 },
+                { value: 'cycling', label: 'Vélo route', icon: '🚴', order: 2 },
+                { value: 'gravel', label: 'Gravel', icon: '🚵', order: 3 }
+            ];
+
+            for (const type of trackTypes) {
+                await prisma.trackType.create({ data: type });
+            }
+            console.log('✅ Track types seeded successfully');
+        }
     } catch (error) {
         console.error('⚠️  Database connection failed:', error.message);
         console.error('Server is running but database queries will fail');
