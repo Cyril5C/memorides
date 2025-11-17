@@ -96,6 +96,14 @@ app.use('/api', generalLimiter);
 app.use(express.json());
 app.use(express.static('public'));
 
+// Service Worker must never be cached - serve with no-cache headers
+app.get('/sw.js', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(__dirname, 'sw.js'));
+});
+
 // Serve static files from root directory
 app.use(express.static(__dirname));
 
