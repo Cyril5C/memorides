@@ -8,7 +8,9 @@
     "dev": "node dev.js",
     "restore-schema": "node restore-schema.js",
     "build": "npx prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "deploy-schema": "node deploy-schema.js",
+    "seed-types": "node prisma/seed-track-types.js"
   },
   "keywords": [
     "gpx",

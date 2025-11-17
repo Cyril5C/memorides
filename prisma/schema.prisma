@@ -69,3 +69,15 @@ model Photo {
   @@index([createdAt])
   @@index([trackId])
 }
+
+model TrackType {
+  id        String   @id @default(cuid())
+  value     String   @unique  // 'hiking', 'cycling', 'gravel', etc.
+  label     String              // Display name: 'Randonnée', 'Vélo route', etc.
+  icon      String              // Emoji icon: '🥾', '🚴', '🚵', etc.
+  order     Int      @default(0) // Display order
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+}
