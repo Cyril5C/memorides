@@ -1220,6 +1220,10 @@ function removeLabel(index) {
     renderLabelSuggestions();
 }
 
+// Expose functions globally for onclick handlers
+window.addLabel = addLabel;
+window.removeLabel = removeLabel;
+
 // Render labels
 function renderLabels() {
     const container = document.getElementById('labelsDisplay');
