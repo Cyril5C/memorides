@@ -1251,7 +1251,7 @@ select {
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: 1rem;
-    margin-top: 102px; /* 100px lower from original 2rem */
+    margin-top: 45px; /* 100px lower from original 2rem */
     background: var(--primary-color);
     color: white;
     border-radius: 0;
