@@ -181,7 +181,7 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
                 name: name || req.file.originalname.replace('.gpx', ''),
                 title: title || gpxName || null,
                 comments: comments || null,
-                type: type || 'hiking',
+                type: type || 'gravel',
                 direction: direction || 'one-way',
                 color: color || '#2563eb',
                 distance: parseFloat(distance) || 0,

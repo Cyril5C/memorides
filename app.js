@@ -1139,7 +1139,7 @@ function editTrack(trackId) {
     // Fill form with current values
     // If title is empty, pre-fill with GPX name if available
     document.getElementById('editTrackTitle').value = track.title || track.name || '';
-    document.getElementById('editTrackType').value = track.type || 'hiking';
+    document.getElementById('editTrackType').value = track.type || 'gravel';
     document.getElementById('editTrackColor').value = track.color || '#2563eb';
     document.getElementById('editTrackComments').value = track.comments || '';
 
