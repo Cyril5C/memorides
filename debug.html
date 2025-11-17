@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Memorides</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 1rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:active {
+            background: #1e40af;
+        }
+        #output {
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Memorides</h1>
+
+    <button onclick="unregisterSW()">1. Désinscrire Service Worker</button>
+    <button onclick="clearCache()">2. Vider le cache</button>
+    <button onclick="clearAll()">3. Tout supprimer</button>
+    <button onclick="reloadApp()">4. Recharger l'app</button>
+
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        async function unregisterSW() {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+                output.textContent = '✅ Service worker désinscrit\n' + registrations.length + ' registration(s) supprimée(s)';
+            } catch (error) {
+                output.textContent = '❌ Erreur: ' + error.message;
+            }
+        }
+
+        async function clearCache() {
+            try {
+                const cacheNames = await caches.keys();
+                for (let name of cacheNames) {
+                    await caches.delete(name);
+                }
+                output.textContent = '✅ Cache vidé\n' + cacheNames.length + ' cache(s) supprimé(s):\n' + cacheNames.join('\n');
+            } catch (error) {
+                output.textContent = '❌ Erreur: ' + error.message;
+            }
+        }
+
+        async function clearAll() {
+            try {
+                // Unregister SW
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+
+                // Clear caches
+                const cacheNames = await caches.keys();
+                for (let name of cacheNames) {
+                    await caches.delete(name);
+                }
+
+                // Clear localStorage
+                localStorage.clear();
+
+                output.textContent = '✅ Tout supprimé!\n' +
+                    '- SW: ' + registrations.length + ' supprimé(s)\n' +
+                    '- Caches: ' + cacheNames.length + ' supprimé(s)\n' +
+                    '- localStorage vidé';
+            } catch (error) {
+                output.textContent = '❌ Erreur: ' + error.message;
+            }
+        }
+
+        function reloadApp() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
