@@ -494,6 +494,81 @@ app.delete('/api/photos/:filename', async (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
 
+// Admin consistency check endpoint (temporary)
+app.get('/api/admin/consistency', async (_req, res) => {
+    try {
+        // Read GPX files from disk
+        const gpxFiles = await fsPromises.readdir(gpxDir).catch(() => []);
+
+        // Read photos from disk
+        const photoFiles = await fsPromises.readdir(photosDir).catch(() => []);
+
+        // Read tracks from DB
+        const tracks = await prisma.track.findMany({
+            select: {
+                id: true,
+                filename: true,
+                name: true,
+                title: true
+            }
+        });
+
+        // Read photos from DB
+        const photos = await prisma.photo.findMany({
+            select: {
+                id: true,
+                filename: true,
+                name: true
+            }
+        });
+
+        // Find orphaned files and DB entries
+        const dbFilenames = new Set(tracks.map(t => t.filename));
+        const fileSet = new Set(gpxFiles);
+
+        const orphanedFiles = gpxFiles.filter(f => !dbFilenames.has(f));
+        const orphanedEntries = tracks.filter(t => !fileSet.has(t.filename));
+
+        const dbPhotoFilenames = new Set(photos.map(p => p.filename));
+        const photoFileSet = new Set(photoFiles);
+
+        const orphanedPhotoFiles = photoFiles.filter(f => !dbPhotoFilenames.has(f));
+        const orphanedPhotoEntries = photos.filter(p => !photoFileSet.has(p.filename));
+
+        res.json({
+            gpx: {
+                filesOnDisk: gpxFiles.length,
+                entriesInDB: tracks.length,
+                orphanedFiles: orphanedFiles,
+                orphanedEntries: orphanedEntries.map(t => ({
+                    filename: t.filename,
+                    id: t.id,
+                    name: t.title || t.name
+                }))
+            },
+            photos: {
+                filesOnDisk: photoFiles.length,
+                entriesInDB: photos.length,
+                orphanedFiles: orphanedPhotoFiles,
+                orphanedEntries: orphanedPhotoEntries.map(p => ({
+                    filename: p.filename,
+                    id: p.id,
+                    name: p.name
+                }))
+            },
+            summary: {
+                totalIssues: orphanedFiles.length + orphanedEntries.length +
+                           orphanedPhotoFiles.length + orphanedPhotoEntries.length,
+                isConsistent: (orphanedFiles.length + orphanedEntries.length +
+                             orphanedPhotoFiles.length + orphanedPhotoEntries.length) === 0
+            }
+        });
+    } catch (error) {
+        console.error('Consistency check error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Health check
 app.get('/api/health', async (_req, res) => {
     try {
