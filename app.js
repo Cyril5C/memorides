@@ -757,7 +757,7 @@ function showTrackInfoModal(track) {
 
         // Create new map
         state.trackDetailMap = L.map('trackDetailMap', {
-            zoomControl: true
+            zoomControl: false
         });
 
         // Add tiles
