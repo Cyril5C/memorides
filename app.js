@@ -699,7 +699,7 @@ function showTrackInfoModal(track) {
     const displayTitle = track.title || track.name;
     const typeIcon = getTypeIcon(track.type);
 
-    document.getElementById('trackInfoTitle').textContent = `${typeIcon} ${displayTitle}`;
+    document.getElementById('trackInfoTitleText').textContent = `${typeIcon} ${displayTitle}`;
     document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
     document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
     document.getElementById('trackInfoDuration').textContent = formatDuration(track.duration);
