@@ -1231,7 +1231,8 @@ select {
     height: 100vh; /* Full viewport height */
     height: 100dvh; /* Dynamic viewport height for mobile browsers */
     border-radius: 0;
-    padding: 1rem; /* Standard padding */
+    padding: 1rem;
+    padding-top: 70px; /* Extra padding for iPhone notch/Dynamic Island */
     overflow-y: auto;
     margin: 0; /* Remove any margin */
 }
@@ -1251,7 +1252,7 @@ select {
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: 1rem;
-    margin-top: 90px; /* Space for iPhone notch/Dynamic Island */
+    margin-top: 0; /* No extra margin needed, handled by modal padding-top */
     background: transparent;
     color: inherit;
     border-radius: 0;
@@ -1281,6 +1282,7 @@ select {
         width: 100%;
         border-radius: 1rem;
         padding: 1.5rem;
+        padding-top: 1.5rem; /* Reset padding-top on desktop */
     }
 
     .clickable-title {
