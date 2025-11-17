@@ -1251,7 +1251,7 @@ select {
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: 1rem;
-    margin-top: 60px; /* Space for iPhone notch/Dynamic Island */
+    margin-top: 90px; /* Space for iPhone notch/Dynamic Island */
     background: transparent;
     color: inherit;
     border-radius: 0;
