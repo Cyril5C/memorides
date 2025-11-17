@@ -785,6 +785,74 @@ app.get('/api/export/backup', async (req, res) => {
 
         archive.append(photosCSV, { name: 'database/photos.csv' });
 
+        // Generate SQL dump for easy reimport
+        const sqlDump = [];
+
+        // SQL Header
+        sqlDump.push('-- Memorides Database Backup');
+        sqlDump.push(`-- Generated: ${new Date().toISOString()}`);
+        sqlDump.push('-- PostgreSQL/SQLite compatible\n');
+
+        // Labels
+        sqlDump.push('-- Labels');
+        sqlDump.push('DELETE FROM "TrackLabel";');
+        sqlDump.push('DELETE FROM "Label";\n');
+        for (const label of labels) {
+            const id = label.id.replace(/'/g, "''");
+            const name = label.name.replace(/'/g, "''");
+            const createdAt = new Date(label.createdAt).toISOString();
+            sqlDump.push(`INSERT INTO "Label" ("id", "name", "createdAt") VALUES ('${id}', '${name}', '${createdAt}');`);
+        }
+
+        // Tracks
+        sqlDump.push('\n-- Tracks');
+        sqlDump.push('DELETE FROM "Photo" WHERE "trackId" IS NOT NULL;');
+        sqlDump.push('DELETE FROM "Track";\n');
+        for (const track of tracks) {
+            const id = track.id.replace(/'/g, "''");
+            const filename = track.filename.replace(/'/g, "''");
+            const name = (track.name || '').replace(/'/g, "''");
+            const title = (track.title || '').replace(/'/g, "''");
+            const type = track.type.replace(/'/g, "''");
+            const direction = track.direction.replace(/'/g, "''");
+            const color = track.color.replace(/'/g, "''");
+            const comments = (track.comments || '').replace(/'/g, "''");
+            const completedAt = track.completedAt ? `'${new Date(track.completedAt).toISOString()}'` : 'NULL';
+            const duration = track.duration !== null ? track.duration : 'NULL';
+            const createdAt = new Date(track.createdAt).toISOString();
+            const updatedAt = new Date(track.updatedAt).toISOString();
+
+            sqlDump.push(`INSERT INTO "Track" ("id", "filename", "name", "title", "type", "direction", "color", "distance", "elevation", "duration", "completedAt", "comments", "createdAt", "updatedAt") VALUES ('${id}', '${filename}', '${name}', '${title}', '${type}', '${direction}', '${color}', ${track.distance}, ${track.elevation}, ${duration}, ${completedAt}, '${comments}', '${createdAt}', '${updatedAt}');`);
+        }
+
+        // Track Labels (many-to-many)
+        sqlDump.push('\n-- Track Labels');
+        for (const track of tracks) {
+            for (const trackLabel of track.labels) {
+                const id = trackLabel.id.replace(/'/g, "''");
+                const trackId = track.id.replace(/'/g, "''");
+                const labelId = trackLabel.labelId.replace(/'/g, "''");
+                const createdAt = new Date(trackLabel.createdAt).toISOString();
+                sqlDump.push(`INSERT INTO "TrackLabel" ("id", "trackId", "labelId", "createdAt") VALUES ('${id}', '${trackId}', '${labelId}', '${createdAt}');`);
+            }
+        }
+
+        // Photos
+        sqlDump.push('\n-- Photos\n');
+        for (const photo of photos) {
+            const id = photo.id.replace(/'/g, "''");
+            const filename = photo.filename.replace(/'/g, "''");
+            const name = photo.name.replace(/'/g, "''");
+            const photoPath = photo.path.replace(/'/g, "''");
+            const trackId = photo.trackId ? `'${photo.trackId.replace(/'/g, "''")}'` : 'NULL';
+            const createdAt = new Date(photo.createdAt).toISOString();
+
+            sqlDump.push(`INSERT INTO "Photo" ("id", "filename", "name", "path", "latitude", "longitude", "trackId", "createdAt") VALUES ('${id}', '${filename}', '${name}', '${photoPath}', ${photo.latitude}, ${photo.longitude}, ${trackId}, '${createdAt}');`);
+        }
+
+        const sqlContent = sqlDump.join('\n');
+        archive.append(sqlContent, { name: 'database/backup.sql' });
+
         // Finalize the archive
         await archive.finalize();
 
