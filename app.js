@@ -17,7 +17,7 @@ const state = {
     labels: [], // All available labels
     layers: {
         tracks: {},
-        photos: L.layerGroup()
+        photos: null // Will be initialized when Leaflet is ready
     },
     currentFilter: 'all',
     currentView: 'map',
@@ -45,7 +45,8 @@ function initMap() {
         maxZoom: 19
     }).addTo(state.map);
 
-    // Add photo layer to map
+    // Initialize and add photo layer to map
+    state.layers.photos = L.layerGroup();
     state.layers.photos.addTo(state.map);
 }
 
