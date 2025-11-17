@@ -4,11 +4,11 @@
   "description": "Application web pour gérer traces GPX et photos géotaggées",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node start.js",
     "dev": "node dev.js",
     "restore-schema": "node restore-schema.js",
-    "build": "npx prisma generate && npx prisma db push --accept-data-loss",
-    "postinstall": "prisma generate && prisma db push --accept-data-loss --skip-generate",
+    "build": "npx prisma generate",
+    "postinstall": "prisma generate",
     "deploy-schema": "node deploy-schema.js",
     "seed-types": "node prisma/seed-track-types.js"
   },
