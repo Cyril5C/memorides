@@ -124,6 +124,35 @@ function attachEventListeners() {
         }
     });
 
+    // Settings tabs
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.tab;
+
+            // Update active tab
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Update visible content
+            document.querySelectorAll('.settings-tab-content').forEach(content => {
+                content.classList.remove('active');
+                content.classList.add('hidden');
+            });
+
+            const targetContent = document.getElementById(`${targetTab}Tab`);
+            targetContent.classList.remove('hidden');
+            targetContent.classList.add('active');
+
+            // Load data for the selected tab
+            if (targetTab === 'types') {
+                loadAndDisplayTrackTypes();
+            }
+        });
+    });
+
+    // Track types management
+    document.getElementById('addTrackTypeBtn').addEventListener('click', showAddTrackTypeForm);
+
     // FAB button - trigger GPX upload directly
     document.getElementById('fabButton').addEventListener('click', () => {
         document.getElementById('gpxUploadFab').click();
@@ -1815,5 +1844,122 @@ async function deleteLabel(labelId, labelName) {
     } catch (error) {
         console.error('Error deleting label:', error);
         alert('Erreur lors de la suppression du libellé');
+    }
+}
+
+// Track Types Management
+
+// Load and display track types
+async function loadAndDisplayTrackTypes() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/track-types/list`);
+        const result = await response.json();
+
+        if (result.success && result.trackTypes) {
+            const container = document.getElementById('trackTypesManagementList');
+
+            if (result.trackTypes.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Aucun type de trace</p>';
+                return;
+            }
+
+            container.innerHTML = result.trackTypes.map(type => `
+                <div class="label-management-item">
+                    <div class="label-management-info">
+                        <span class="label-management-name">${type.icon} ${type.label}</span>
+                        <span class="label-management-count">Valeur: ${type.value}</span>
+                    </div>
+                    <div class="label-management-actions">
+                        <button class="btn btn-secondary btn-small" data-type-id="${type.id}" data-type='${JSON.stringify(type)}'>Modifier</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Attach event listeners
+            container.querySelectorAll('.btn-secondary').forEach(button => {
+                button.addEventListener('click', () => {
+                    const type = JSON.parse(button.dataset.type);
+                    showEditTrackTypeForm(type);
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Error loading track types:', error);
+        alert('Erreur lors du chargement des types');
+    }
+}
+
+// Show add track type form
+function showAddTrackTypeForm() {
+    const value = prompt('Valeur du type (ex: mtb):');
+    if (!value) return;
+
+    const label = prompt('Libellé (ex: VTT):');
+    if (!label) return;
+
+    const icon = prompt('Icône emoji (ex: 🚵):');
+    if (!icon) return;
+
+    createTrackType(value, label, icon);
+}
+
+// Show edit track type form
+function showEditTrackTypeForm(type) {
+    const label = prompt('Nouveau libellé:', type.label);
+    if (!label) return;
+
+    const icon = prompt('Nouvelle icône emoji:', type.icon);
+    if (!icon) return;
+
+    updateTrackType(type.id, type.value, label, icon, type.order);
+}
+
+// Create a new track type
+async function createTrackType(value, label, icon) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/track-types`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ value, label, icon })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            await loadAndDisplayTrackTypes();
+            alert('Type créé avec succès !');
+        } else {
+            alert('Erreur lors de la création du type');
+        }
+    } catch (error) {
+        console.error('Error creating track type:', error);
+        alert('Erreur lors de la création du type');
+    }
+}
+
+// Update a track type
+async function updateTrackType(id, value, label, icon, order) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/track-types/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ value, label, icon, order })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            await loadAndDisplayTrackTypes();
+            alert('Type mis à jour avec succès !');
+        } else {
+            alert('Erreur lors de la mise à jour du type');
+        }
+    } catch (error) {
+        console.error('Error updating track type:', error);
+        alert('Erreur lors de la mise à jour du type');
     }
 }

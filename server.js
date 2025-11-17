@@ -429,6 +429,72 @@ app.delete('/api/labels/:id', async (req, res) => {
     }
 });
 
+// Track Types API
+
+// List all track types
+app.get('/api/track-types/list', async (_req, res) => {
+    try {
+        const trackTypes = await prisma.trackType.findMany({
+            orderBy: {
+                order: 'asc'
+            }
+        });
+
+        res.json({ success: true, trackTypes });
+    } catch (error) {
+        console.error('Error listing track types:', error);
+        res.status(500).json({ error: 'Error listing track types' });
+    }
+});
+
+// Create a new track type
+app.post('/api/track-types', async (req, res) => {
+    try {
+        const { value, label, icon, order } = req.body;
+
+        if (!value || !label || !icon) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const trackType = await prisma.trackType.create({
+            data: {
+                value,
+                label,
+                icon,
+                order: order || 0
+            }
+        });
+
+        res.json({ success: true, trackType });
+    } catch (error) {
+        console.error('Error creating track type:', error);
+        res.status(500).json({ error: 'Error creating track type' });
+    }
+});
+
+// Update a track type
+app.put('/api/track-types/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { value, label, icon, order } = req.body;
+
+        const trackType = await prisma.trackType.update({
+            where: { id },
+            data: {
+                value,
+                label,
+                icon,
+                order
+            }
+        });
+
+        res.json({ success: true, trackType });
+    } catch (error) {
+        console.error('Error updating track type:', error);
+        res.status(500).json({ error: 'Error updating track type' });
+    }
+});
+
 // Get GPX file content
 app.get('/api/gpx/:filename', async (req, res) => {
     try {

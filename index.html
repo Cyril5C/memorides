@@ -177,13 +177,31 @@
         </div>
     </div>
 
-    <!-- Labels Management Modal -->
+    <!-- Settings Management Modal -->
     <div id="labelsManagementModal" class="modal hidden">
         <div class="modal-content modal-form">
             <button class="modal-close" id="closeLabelsManagementModal"></button>
-            <h3>Gérer les libellés</h3>
-            <div id="labelsManagementList" class="labels-management-list">
-                <!-- Labels will be displayed here -->
+            <h3>Paramètres</h3>
+
+            <!-- Tabs -->
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="labels">Libellés</button>
+                <button class="settings-tab" data-tab="types">Types de trace</button>
+            </div>
+
+            <!-- Labels Tab -->
+            <div id="labelsTab" class="settings-tab-content active">
+                <div id="labelsManagementList" class="labels-management-list">
+                    <!-- Labels will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Track Types Tab -->
+            <div id="typesTab" class="settings-tab-content hidden">
+                <button class="btn btn-primary btn-small" id="addTrackTypeBtn" style="margin-bottom: 1rem;">➕ Ajouter un type</button>
+                <div id="trackTypesManagementList" class="labels-management-list">
+                    <!-- Track types will be displayed here -->
+                </div>
             </div>
         </div>
     </div>
