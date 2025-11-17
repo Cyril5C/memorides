@@ -837,9 +837,12 @@ function showTrackInfoModal(track) {
             }).addTo(state.trackDetailMap);
         }
 
+        // Force map to recalculate size (needed when container was hidden)
+        state.trackDetailMap.invalidateSize();
+
         // Fit bounds to show entire track
         state.trackDetailMap.fitBounds(track.bounds, { padding: [30, 30] });
-    }, 100); // Small delay to ensure modal is visible
+    }, 200); // Delay to ensure modal is visible and rendered
 }
 
 // Close track info modal

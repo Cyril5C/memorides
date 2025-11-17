@@ -1247,8 +1247,9 @@ select {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem;
+    padding: 1rem 0.75rem;
     margin: -1rem -1rem 1rem -1rem;
+    margin-top: 2rem; /* Extra space at top on mobile */
     background: var(--primary-color);
     color: white;
     border-radius: 0;
@@ -1283,6 +1284,7 @@ select {
     .clickable-title {
         border-radius: 8px;
         margin: -0.5rem -0.5rem 1rem -0.5rem;
+        margin-top: -0.5rem; /* Reset margin-top on desktop */
     }
 
     #trackDetailMap {
