@@ -505,6 +505,62 @@ app.get('/api/admin/list-files', async (_req, res) => {
     }
 });
 
+// Admin cleanup orphaned entries endpoint (temporary)
+app.post('/api/admin/cleanup-orphans', async (_req, res) => {
+    try {
+        // Read GPX files from disk
+        const gpxFiles = await fsPromises.readdir(gpxDir).catch(() => []);
+        const fileSet = new Set(gpxFiles);
+
+        // Find tracks without corresponding files
+        const tracks = await prisma.track.findMany({
+            select: {
+                id: true,
+                filename: true,
+                name: true,
+                title: true
+            }
+        });
+
+        const orphanedTracks = tracks.filter(t => !fileSet.has(t.filename));
+
+        if (orphanedTracks.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No orphaned tracks found',
+                deleted: []
+            });
+        }
+
+        // Delete orphaned tracks (cascade will delete related TrackLabel entries)
+        const deletedIds = [];
+        for (const track of orphanedTracks) {
+            await prisma.track.delete({
+                where: { id: track.id }
+            });
+            deletedIds.push({
+                id: track.id,
+                filename: track.filename,
+                name: track.title || track.name
+            });
+        }
+
+        console.log(`✅ Cleaned up ${deletedIds.length} orphaned track entries`);
+
+        res.json({
+            success: true,
+            message: `Successfully deleted ${deletedIds.length} orphaned tracks`,
+            deleted: deletedIds
+        });
+    } catch (error) {
+        console.error('Cleanup error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Admin consistency check endpoint (temporary)
 app.get('/api/admin/consistency', async (_req, res) => {
     try {
