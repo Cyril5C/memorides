@@ -1251,7 +1251,7 @@ select {
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: 1rem;
-    margin-top: 102px; /* 100px lower from original 2rem */
+    margin-top: calc(env(safe-area-inset-top, 0px) + 1rem); /* Below iPhone notch/Dynamic Island */
     background: transparent;
     color: inherit;
     border-radius: 0;
