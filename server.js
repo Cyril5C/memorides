@@ -4,7 +4,11 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = fs.promises;
 const { PrismaClient } = require('@prisma/client');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const compression = require('compression');
 
 console.log('🔧 Initializing server...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
@@ -19,8 +23,75 @@ const prisma = new PrismaClient({
     log: ['error', 'warn']
 });
 
+// Security: Sanitize filenames to prevent path traversal attacks
+function sanitizeFilename(filename) {
+    // Extract basename to remove any path components
+    const basename = path.basename(filename);
+    // Remove all potentially dangerous characters
+    return basename.replace(/[^a-zA-Z0-9._-]/g, '');
+}
+
+// Security: Rate limiters
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Trop de requêtes, réessayez plus tard',
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const uploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // Limit each IP to 20 uploads per hour
+    message: 'Trop d\'uploads, réessayez dans 1 heure',
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // Middleware
-app.use(cors());
+// Security headers
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'"]
+        }
+    },
+    crossOriginEmbedderPolicy: false // Required for Leaflet
+}));
+
+// Disable X-Powered-By header
+app.disable('x-powered-by');
+
+// CORS configuration - restrict origins in production
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://localhost:8080'];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE']
+}));
+
+// Compression
+app.use(compression());
+
+// Rate limiting on API routes
+app.use('/api', generalLimiter);
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -68,7 +139,7 @@ const upload = multer({
 // Routes
 
 // Upload GPX file with metadata
-app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
+app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -107,7 +178,11 @@ app.post('/api/gpx/upload', upload.single('gpx'), async (req, res) => {
         console.error('Error uploading GPX:', error);
         // Delete file if database save fails
         if (req.file) {
-            fs.unlinkSync(req.file.path);
+            try {
+                await fsPromises.unlink(req.file.path);
+            } catch (unlinkError) {
+                console.error('Error deleting uploaded file:', unlinkError);
+            }
         }
         res.status(500).json({ error: 'Error uploading file' });
     }
@@ -190,7 +265,7 @@ app.patch('/api/gpx/:filename', async (req, res) => {
 });
 
 // Upload photo with metadata
-app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
+app.post('/api/photos/upload', uploadLimiter, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -200,7 +275,7 @@ app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
         const { name, latitude, longitude, trackId } = req.body;
 
         if (!latitude || !longitude) {
-            fs.unlinkSync(req.file.path);
+            await fsPromises.unlink(req.file.path);
             return res.status(400).json({ error: 'GPS coordinates required' });
         }
 
@@ -230,7 +305,7 @@ app.post('/api/photos/upload', upload.single('photo'), async (req, res) => {
         console.error('Error uploading photo:', error);
         // Delete file if database save fails
         if (req.file) {
-            fs.unlinkSync(req.file.path);
+            await fsPromises.unlink(req.file.path);
         }
         res.status(500).json({ error: 'Error uploading file' });
     }
@@ -296,7 +371,8 @@ app.get('/api/labels/list', async (_req, res) => {
 app.get('/api/gpx/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        const filePath = path.join(gpxDir, filename);
+        const sanitized = sanitizeFilename(filename);
+        const filePath = path.join(gpxDir, sanitized);
 
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'File not found' });
@@ -314,7 +390,7 @@ app.get('/api/gpx/:filename', async (req, res) => {
             }
         });
 
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsPromises.readFile(filePath, 'utf8');
         res.json({ success: true, content, track });
     } catch (error) {
         console.error('Error reading GPX file:', error);
@@ -326,7 +402,8 @@ app.get('/api/gpx/:filename', async (req, res) => {
 app.delete('/api/gpx/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        const filePath = path.join(gpxDir, filename);
+        const sanitized = sanitizeFilename(filename);
+        const filePath = path.join(gpxDir, sanitized);
 
         // Get track with associated photos first
         const track = await prisma.track.findUnique({
@@ -348,10 +425,10 @@ app.delete('/api/gpx/:filename', async (req, res) => {
         // Delete associated photo files and database entries
         if (track.photos && track.photos.length > 0) {
             for (const photo of track.photos) {
-                const photoPath = path.join(photosDir, photo.filename);
+                const photoPath = path.join(photosDir, sanitizeFilename(photo.filename));
                 console.log(`Deleting photo file: ${photoPath}`);
                 if (fs.existsSync(photoPath)) {
-                    fs.unlinkSync(photoPath);
+                    await fsPromises.unlink(photoPath);
                 }
                 // Delete photo from database
                 await prisma.photo.delete({
@@ -377,7 +454,7 @@ app.delete('/api/gpx/:filename', async (req, res) => {
         // Delete GPX file
         if (fs.existsSync(filePath)) {
             console.log(`Deleting GPX file: ${filePath}`);
-            fs.unlinkSync(filePath);
+            await fsPromises.unlink(filePath);
         }
 
         console.log('Track deleted successfully');
@@ -393,7 +470,8 @@ app.delete('/api/gpx/:filename', async (req, res) => {
 app.delete('/api/photos/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        const filePath = path.join(photosDir, filename);
+        const sanitized = sanitizeFilename(filename);
+        const filePath = path.join(photosDir, sanitized);
 
         // Delete from database
         await prisma.photo.delete({
@@ -402,7 +480,7 @@ app.delete('/api/photos/:filename', async (req, res) => {
 
         // Delete file
         if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+            await fsPromises.unlink(filePath);
         }
 
         res.json({ success: true, message: 'Photo deleted' });
