@@ -28,6 +28,22 @@ async function start() {
           console.error(stderr);
         }
         console.log('✅ Schema applied successfully');
+
+        // Seed track types after schema is applied
+        console.log('🌱 Seeding track types...');
+        try {
+          const { stdout: seedStdout, stderr: seedStderr } = await execPromise('node prisma/seed-track-types.js');
+          console.log('📋 Track Types Seed STDOUT:');
+          console.log(seedStdout);
+          if (seedStderr) {
+            console.log('⚠️  Track Types Seed STDERR:');
+            console.error(seedStderr);
+          }
+        } catch (seedError) {
+          console.error('⚠️  Track types seeding failed (non-critical):');
+          console.error('   Error message:', seedError.message);
+          // Don't throw - seeding failure is non-critical
+        }
       } catch (dbPushError) {
         console.error('❌ Prisma DB Push failed:');
         console.error('   Error message:', dbPushError.message);
