@@ -906,7 +906,10 @@ function showTrackInfoModal(track) {
 
                 const photoUrl = `${BASE_URL}${photo.path}`;
                 L.marker([photo.latitude, photo.longitude], { icon })
-                    .bindPopup(`<h4>${photo.name}</h4><img src="${photoUrl}" style="max-width: 200px; border-radius: 4px;">`)
+                    .bindPopup(`<h4 style="margin: 0 0 8px 0; font-size: 14px;">${photo.name}</h4><img src="${photoUrl}" style="max-width: 150px; max-height: 150px; width: 100%; height: auto; object-fit: contain; border-radius: 4px; display: block;">`, {
+                        maxWidth: 180,
+                        className: 'photo-popup'
+                    })
                     .on('click', () => showPhotoModal(photo))
                     .addTo(state.trackDetailMap);
             });
