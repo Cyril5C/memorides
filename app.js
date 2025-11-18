@@ -15,6 +15,7 @@ const state = {
     tracks: [],
     photos: [],
     labels: [], // All available labels
+    trackTypes: [], // All available track types
     layers: {
         tracks: {},
         photos: null // Will be initialized when Leaflet is ready
@@ -28,6 +29,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', async () => {
     initMap();
     attachEventListeners();
+    await loadTrackTypesFromServer();
     await loadLabelsFromServer();
     await loadTracksFromServer();
     await loadPhotosFromServer();
@@ -935,12 +937,8 @@ function renderTracks() {
 
 // Get icon for track type
 function getTypeIcon(type) {
-    const icons = {
-        'hiking': '🥾',
-        'cycling': '🚴',
-        'gravel': '🚵'
-    };
-    return icons[type] || '🥾';
+    const trackType = state.trackTypes.find(t => t.value === type);
+    return trackType ? trackType.icon : '🥾';
 }
 
 // Render photos list (simplified - no sidebar)
@@ -1203,6 +1201,20 @@ async function loadLabelsFromServer() {
     }
 }
 
+// Load track types from server
+async function loadTrackTypesFromServer() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/track-types/list`);
+        const result = await response.json();
+
+        if (result.success && result.trackTypes) {
+            state.trackTypes = result.trackTypes;
+        }
+    } catch (error) {
+        console.error('Error loading track types from server:', error);
+    }
+}
+
 // Edit track - open modal
 let currentEditingTrackId = null;
 let currentTrackLabels = [];
@@ -1210,6 +1222,30 @@ let currentTrackLabels = [];
 // Get all unique labels from database
 function getAllExistingLabels() {
     return state.labels;
+}
+
+// Populate track type select with options from database
+function populateTrackTypeSelect(selectedValue) {
+    const select = document.getElementById('editTrackType');
+
+    // Clear existing options
+    select.innerHTML = '';
+
+    // Add options from state.trackTypes
+    state.trackTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type.value;
+        option.textContent = `${type.icon} ${type.label}`;
+        if (type.value === selectedValue) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+
+    // If no type matches and we have a fallback, select first option
+    if (!selectedValue && state.trackTypes.length > 0) {
+        select.selectedIndex = 0;
+    }
 }
 
 function editTrack(trackId) {
@@ -1221,7 +1257,10 @@ function editTrack(trackId) {
     // Fill form with current values
     // If title is empty, pre-fill with GPX name if available
     document.getElementById('editTrackTitle').value = track.title || track.name || '';
-    document.getElementById('editTrackType').value = track.type || 'gravel';
+
+    // Populate track type select dynamically
+    populateTrackTypeSelect(track.type || 'gravel');
+
     document.getElementById('editTrackColor').value = track.color || '#2563eb';
     document.getElementById('editTrackComments').value = track.comments || '';
 
