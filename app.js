@@ -696,9 +696,13 @@ function showPhotoModal(photo) {
 }
 
 // Global function to expand photo in track detail view
-window.expandTrackPhoto = function(photoId) {
+window.expandTrackPhoto = function(photoId, trackId) {
     const photo = state.photos.find(p => p.id === photoId);
     if (!photo) return;
+
+    // Get all photos for this track
+    const trackPhotos = state.photos.filter(p => p.trackId === (trackId || photo.trackId));
+    const currentIndex = trackPhotos.findIndex(p => p.id === photoId);
 
     const photoUrl = `${BASE_URL}${photo.path}`;
     const trackDetailMap = document.getElementById('trackDetailMap');
@@ -720,16 +724,42 @@ window.expandTrackPhoto = function(photoId) {
         cursor: pointer;
     `;
 
+    // Show navigation buttons only if there are multiple photos
+    const navigationButtons = trackPhotos.length > 1 ? `
+        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001;" title="Photo précédente">‹</button>
+        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001;" title="Photo suivante">›</button>
+        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); border-radius: 4px; padding: 8px 12px; font-size: 14px; z-index: 2001;">${currentIndex + 1} / ${trackPhotos.length}</div>
+    ` : '';
+
     overlay.innerHTML = `
-        <img src="${photoUrl}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
-        <button style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001;" title="Fermer">✕</button>
+        <img id="expandedPhotoImg" src="${photoUrl}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
+        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001;" title="Fermer">✕</button>
+        ${navigationButtons}
     `;
 
     overlay.onclick = function(e) {
-        if (e.target === overlay || e.target.tagName === 'BUTTON') {
+        // Close only if clicking on overlay background or close button
+        if (e.target === overlay || e.target.id === 'closePhotoBtn') {
             overlay.remove();
         }
     };
+
+    // Add navigation event listeners if there are multiple photos
+    if (trackPhotos.length > 1) {
+        overlay.querySelector('#prevPhotoBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const prevIndex = (currentIndex - 1 + trackPhotos.length) % trackPhotos.length;
+            overlay.remove();
+            window.expandTrackPhoto(trackPhotos[prevIndex].id, trackId || photo.trackId);
+        });
+
+        overlay.querySelector('#nextPhotoBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const nextIndex = (currentIndex + 1) % trackPhotos.length;
+            overlay.remove();
+            window.expandTrackPhoto(trackPhotos[nextIndex].id, trackId || photo.trackId);
+        });
+    }
 
     trackDetailMap.parentElement.style.position = 'relative';
     trackDetailMap.parentElement.appendChild(overlay);
@@ -944,22 +974,12 @@ function showTrackInfoModal(track) {
                     shadowSize: [41, 41]
                 });
 
-                const photoUrl = `${BASE_URL}${photo.path}`;
                 const marker = L.marker([photo.latitude, photo.longitude], { icon })
                     .addTo(state.trackDetailMap);
 
-                // Create custom popup content with expand button
-                const popupContent = `
-                    <div style="position: relative;">
-                        <img src="${photoUrl}" style="max-width: 150px; max-height: 150px; width: 100%; height: auto; object-fit: contain; border-radius: 4px; display: block; cursor: pointer;" onclick="window.expandTrackPhoto('${photo.id}')">
-                        <button onclick="window.expandTrackPhoto('${photo.id}')" style="position: absolute; top: 4px; right: 4px; background: rgba(255,255,255,0.9); border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" title="Voir en grand">⤢</button>
-                    </div>
-                `;
-
-                marker.bindPopup(popupContent, {
-                    maxWidth: 180,
-                    className: 'photo-popup',
-                    closeButton: true
+                // Click on marker opens full-size photo directly
+                marker.on('click', () => {
+                    window.expandTrackPhoto(photo.id);
                 });
             });
         }
