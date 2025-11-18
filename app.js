@@ -965,13 +965,12 @@ function showTrackInfoModal(track) {
         if (state.photos && state.photos.length > 0) {
             const trackPhotos = state.photos.filter(photo => photo.trackId === track.id);
             trackPhotos.forEach(photo => {
-                const icon = L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
+                // Use divIcon with emoji for better PWA compatibility
+                const icon = L.divIcon({
+                    className: 'photo-marker',
+                    html: '<div style="font-size: 28px; text-align: center; margin-top: -14px; cursor: pointer;">📷</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
                 });
 
                 const marker = L.marker([photo.latitude, photo.longitude], { icon })
