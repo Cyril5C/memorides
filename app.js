@@ -891,6 +891,27 @@ function showTrackInfoModal(track) {
         // Fit bounds to show entire track
         state.trackDetailMap.fitBounds(track.bounds, { padding: [30, 30] });
 
+        // Add photos associated with this track
+        if (state.photos && state.photos.length > 0) {
+            const trackPhotos = state.photos.filter(photo => photo.trackId === track.id);
+            trackPhotos.forEach(photo => {
+                const icon = L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                const photoUrl = `${BASE_URL}${photo.path}`;
+                L.marker([photo.latitude, photo.longitude], { icon })
+                    .bindPopup(`<h4>${photo.name}</h4><img src="${photoUrl}" style="max-width: 200px; border-radius: 4px;">`)
+                    .on('click', () => showPhotoModal(photo))
+                    .addTo(state.trackDetailMap);
+            });
+        }
+
         // Setup expand/collapse button
         const expandBtn = document.getElementById('expandMapBtn');
         const mapElement = document.getElementById('trackDetailMap');
@@ -1184,9 +1205,10 @@ async function loadPhotosFromServer() {
 
         if (result.success && result.photos && result.photos.length > 0) {
             state.photos = result.photos;
-            result.photos.forEach(photo => {
-                addPhotoToMap(photo);
-            });
+            // Don't add photos to main map - they will be shown in track detail modal
+            // result.photos.forEach(photo => {
+            //     addPhotoToMap(photo);
+            // });
         }
 
         renderPhotos();
