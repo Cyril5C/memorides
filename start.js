@@ -16,18 +16,18 @@ async function start() {
     console.log('   - DATABASE_URL exists:', !!process.env.DATABASE_URL);
     console.log('   - DATABASE_URL type:', process.env.DATABASE_URL ? (process.env.DATABASE_URL.includes('postgres') ? 'PostgreSQL' : 'Other') : 'Not set');
 
-    // Only run db push in production (PostgreSQL)
+    // Only run migrations in production (PostgreSQL)
     if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgres')) {
-      console.log('📤 Applying database schema with Prisma DB Push...');
+      console.log('📤 Applying database migrations with Prisma Migrate...');
       try {
-        const { stdout, stderr } = await execPromise('npx prisma db push --accept-data-loss --skip-generate');
-        console.log('📋 Prisma DB Push STDOUT:');
+        const { stdout, stderr } = await execPromise('npx prisma migrate deploy');
+        console.log('📋 Prisma Migrate STDOUT:');
         console.log(stdout);
         if (stderr) {
-          console.log('⚠️  Prisma DB Push STDERR:');
+          console.log('⚠️  Prisma Migrate STDERR:');
           console.error(stderr);
         }
-        console.log('✅ Schema applied successfully');
+        console.log('✅ Migrations applied successfully');
 
         // Seed track types after schema is applied
         console.log('🌱 Seeding track types...');
@@ -44,15 +44,15 @@ async function start() {
           console.error('   Error message:', seedError.message);
           // Don't throw - seeding failure is non-critical
         }
-      } catch (dbPushError) {
-        console.error('❌ Prisma DB Push failed:');
-        console.error('   Error message:', dbPushError.message);
-        console.error('   Error stdout:', dbPushError.stdout);
-        console.error('   Error stderr:', dbPushError.stderr);
-        throw dbPushError;
+      } catch (migrateError) {
+        console.error('❌ Prisma Migrate failed:');
+        console.error('   Error message:', migrateError.message);
+        console.error('   Error stdout:', migrateError.stdout);
+        console.error('   Error stderr:', migrateError.stderr);
+        throw migrateError;
       }
     } else {
-      console.log('⏭️  Skipping schema push (not PostgreSQL or DATABASE_URL not set)');
+      console.log('⏭️  Skipping migrations (not PostgreSQL or DATABASE_URL not set)');
     }
 
     // Start the server
