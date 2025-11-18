@@ -206,6 +206,34 @@
         </div>
     </div>
 
+    <!-- Track Type Form Modal -->
+    <div id="trackTypeFormModal" class="modal hidden">
+        <div class="modal-content modal-form">
+            <button class="modal-close" id="closeTrackTypeFormModal"></button>
+            <h3 id="trackTypeFormTitle">Ajouter un type de trace</h3>
+            <form id="trackTypeForm">
+                <div class="form-group">
+                    <label for="trackTypeValue">Valeur (identifiant unique):</label>
+                    <input type="text" id="trackTypeValue" placeholder="ex: mtb" required>
+                    <small style="color: var(--text-secondary);">Minuscules sans espaces, ex: mtb, road, trail</small>
+                </div>
+                <div class="form-group">
+                    <label for="trackTypeLabel">Libellé (nom affiché):</label>
+                    <input type="text" id="trackTypeLabel" placeholder="ex: VTT" required>
+                </div>
+                <div class="form-group">
+                    <label for="trackTypeIcon">Icône emoji:</label>
+                    <input type="text" id="trackTypeIcon" placeholder="ex: 🚵" required maxlength="4">
+                    <small style="color: var(--text-secondary);">Un seul emoji</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" id="cancelTrackTypeForm">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 

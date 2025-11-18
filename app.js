@@ -154,6 +154,14 @@ function attachEventListeners() {
 
     // Track types management
     document.getElementById('addTrackTypeBtn').addEventListener('click', showAddTrackTypeForm);
+    document.getElementById('closeTrackTypeFormModal').addEventListener('click', closeTrackTypeFormModal);
+    document.getElementById('cancelTrackTypeForm').addEventListener('click', closeTrackTypeFormModal);
+    document.getElementById('trackTypeForm').addEventListener('submit', handleTrackTypeFormSubmit);
+    document.getElementById('trackTypeFormModal').addEventListener('click', (e) => {
+        if (e.target.id === 'trackTypeFormModal') {
+            closeTrackTypeFormModal();
+        }
+    });
 
     // FAB button - trigger GPX upload directly
     document.getElementById('fabButton').addEventListener('click', () => {
@@ -1928,29 +1936,57 @@ async function loadAndDisplayTrackTypes() {
     }
 }
 
+// Track Type Form Modal Management
+let currentEditingTrackTypeId = null;
+
 // Show add track type form
 function showAddTrackTypeForm() {
-    const value = prompt('Valeur du type (ex: mtb):');
-    if (!value) return;
-
-    const label = prompt('Libellé (ex: VTT):');
-    if (!label) return;
-
-    const icon = prompt('Icône emoji (ex: 🚵):');
-    if (!icon) return;
-
-    createTrackType(value, label, icon);
+    currentEditingTrackTypeId = null;
+    document.getElementById('trackTypeFormTitle').textContent = 'Ajouter un type de trace';
+    document.getElementById('trackTypeValue').value = '';
+    document.getElementById('trackTypeValue').disabled = false;
+    document.getElementById('trackTypeLabel').value = '';
+    document.getElementById('trackTypeIcon').value = '';
+    document.getElementById('trackTypeFormModal').classList.remove('hidden');
 }
 
 // Show edit track type form
 function showEditTrackTypeForm(type) {
-    const label = prompt('Nouveau libellé:', type.label);
-    if (!label) return;
+    currentEditingTrackTypeId = type.id;
+    document.getElementById('trackTypeFormTitle').textContent = 'Modifier le type de trace';
+    document.getElementById('trackTypeValue').value = type.value;
+    document.getElementById('trackTypeValue').disabled = true; // Can't change value once created
+    document.getElementById('trackTypeLabel').value = type.label;
+    document.getElementById('trackTypeIcon').value = type.icon;
+    document.getElementById('trackTypeFormModal').classList.remove('hidden');
+}
 
-    const icon = prompt('Nouvelle icône emoji:', type.icon);
-    if (!icon) return;
+// Close track type form modal
+function closeTrackTypeFormModal() {
+    document.getElementById('trackTypeFormModal').classList.add('hidden');
+    currentEditingTrackTypeId = null;
+}
 
-    updateTrackType(type.id, type.value, label, icon, type.order);
+// Handle track type form submission
+async function handleTrackTypeFormSubmit(event) {
+    event.preventDefault();
+
+    const value = document.getElementById('trackTypeValue').value.trim();
+    const label = document.getElementById('trackTypeLabel').value.trim();
+    const icon = document.getElementById('trackTypeIcon').value.trim();
+
+    if (!value || !label || !icon) {
+        alert('Tous les champs sont requis');
+        return;
+    }
+
+    if (currentEditingTrackTypeId) {
+        // Update existing type
+        await updateTrackType(currentEditingTrackTypeId, value, label, icon);
+    } else {
+        // Create new type
+        await createTrackType(value, label, icon);
+    }
 }
 
 // Create a new track type
@@ -1967,7 +2003,9 @@ async function createTrackType(value, label, icon) {
         const result = await response.json();
 
         if (result.success) {
+            closeTrackTypeFormModal();
             await loadAndDisplayTrackTypes();
+            await loadTrackTypesFromServer(); // Refresh track types in state
             alert('Type créé avec succès !');
         } else {
             alert('Erreur lors de la création du type');
@@ -1979,7 +2017,7 @@ async function createTrackType(value, label, icon) {
 }
 
 // Update a track type
-async function updateTrackType(id, value, label, icon, order) {
+async function updateTrackType(id, value, label, icon, order = 0) {
     try {
         const response = await fetch(`${API_BASE_URL}/track-types/${id}`, {
             method: 'PUT',
@@ -1992,7 +2030,9 @@ async function updateTrackType(id, value, label, icon, order) {
         const result = await response.json();
 
         if (result.success) {
+            closeTrackTypeFormModal();
             await loadAndDisplayTrackTypes();
+            await loadTrackTypesFromServer(); // Refresh track types in state
             alert('Type mis à jour avec succès !');
         } else {
             alert('Erreur lors de la mise à jour du type');
