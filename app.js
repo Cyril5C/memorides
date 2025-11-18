@@ -695,6 +695,46 @@ function showPhotoModal(photo) {
     document.getElementById('photoModal').classList.remove('hidden');
 }
 
+// Global function to expand photo in track detail view
+window.expandTrackPhoto = function(photoId) {
+    const photo = state.photos.find(p => p.id === photoId);
+    if (!photo) return;
+
+    const photoUrl = `${BASE_URL}${photo.path}`;
+    const trackDetailMap = document.getElementById('trackDetailMap');
+
+    // Create expanded photo overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'expandedPhotoOverlay';
+    overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    `;
+
+    overlay.innerHTML = `
+        <img src="${photoUrl}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
+        <button style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001;" title="Fermer">✕</button>
+    `;
+
+    overlay.onclick = function(e) {
+        if (e.target === overlay || e.target.tagName === 'BUTTON') {
+            overlay.remove();
+        }
+    };
+
+    trackDetailMap.parentElement.style.position = 'relative';
+    trackDetailMap.parentElement.appendChild(overlay);
+};
+
 // Handle photo deletion
 async function handlePhotoDelete() {
     if (!currentPhotoId) return;
@@ -905,13 +945,22 @@ function showTrackInfoModal(track) {
                 });
 
                 const photoUrl = `${BASE_URL}${photo.path}`;
-                L.marker([photo.latitude, photo.longitude], { icon })
-                    .bindPopup(`<h4 style="margin: 0 0 8px 0; font-size: 14px;">${photo.name}</h4><img src="${photoUrl}" style="max-width: 150px; max-height: 150px; width: 100%; height: auto; object-fit: contain; border-radius: 4px; display: block;">`, {
-                        maxWidth: 180,
-                        className: 'photo-popup'
-                    })
-                    .on('click', () => showPhotoModal(photo))
+                const marker = L.marker([photo.latitude, photo.longitude], { icon })
                     .addTo(state.trackDetailMap);
+
+                // Create custom popup content with expand button
+                const popupContent = `
+                    <div style="position: relative;">
+                        <img src="${photoUrl}" style="max-width: 150px; max-height: 150px; width: 100%; height: auto; object-fit: contain; border-radius: 4px; display: block; cursor: pointer;" onclick="window.expandTrackPhoto('${photo.id}')">
+                        <button onclick="window.expandTrackPhoto('${photo.id}')" style="position: absolute; top: 4px; right: 4px; background: rgba(255,255,255,0.9); border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" title="Voir en grand">⤢</button>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent, {
+                    maxWidth: 180,
+                    className: 'photo-popup',
+                    closeButton: true
+                });
             });
         }
 
