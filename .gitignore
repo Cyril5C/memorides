@@ -45,3 +45,4 @@ docker-compose.override.yml
 dist/
 build/
 prisma/migrations_sqlite_backup/
+# Force redeploy - Tue Nov 18 17:28:26 CET 2025
