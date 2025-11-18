@@ -187,8 +187,8 @@ header p {
 
 .expand-map-btn {
     position: absolute;
-    top: 1.5rem;
-    right: 0.5rem;
+    bottom: 1rem;
+    left: 1rem;
     background: white;
     border: 2px solid var(--border-color);
     border-radius: 0.5rem;
