@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadLabelsFromServer();
     await loadTracksFromServer();
     await loadPhotosFromServer();
+
+    // Check if URL contains a track ID to open directly
+    checkForSharedTrack();
 });
 
 // Initialize Leaflet Map
@@ -92,6 +95,12 @@ function attachEventListeners() {
     document.getElementById('downloadTrackFromInfo').addEventListener('click', () => {
         const trackId = document.getElementById('downloadTrackFromInfo').dataset.trackId;
         downloadTrack(trackId);
+    });
+
+    // Share track button
+    document.getElementById('shareTrackBtn').addEventListener('click', () => {
+        const trackId = document.getElementById('shareTrackBtn').dataset.trackId;
+        shareTrack(trackId);
     });
 
     // Track Edit Modal
@@ -813,7 +822,7 @@ async function handlePhotoDelete() {
 }
 
 // Show track info modal
-function showTrackInfoModal(track) {
+function showTrackInfoModal(track, isSharedLink = false) {
     const displayTitle = track.title || track.name;
     const typeIcon = getTypeIcon(track.type);
 
@@ -832,6 +841,17 @@ function showTrackInfoModal(track) {
         document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
     } else {
         document.getElementById('trackInfoCompleted').textContent = 'A faire !';
+    }
+
+    // Hide/show back arrow and edit button based on shared link mode
+    const backArrow = document.querySelector('.back-arrow');
+    const editBtn = document.getElementById('editTrackFromInfo');
+    if (isSharedLink) {
+        backArrow.style.display = 'none';
+        editBtn.style.display = 'none';
+    } else {
+        backArrow.style.display = 'inline';
+        editBtn.style.display = 'inline-block';
     }
 
     // Show/hide labels section
@@ -855,9 +875,10 @@ function showTrackInfoModal(track) {
         commentsContainer.style.display = 'none';
     }
 
-    // Store track ID in edit and download buttons
+    // Store track ID in edit, download and share buttons
     document.getElementById('editTrackFromInfo').dataset.trackId = track.id;
     document.getElementById('downloadTrackFromInfo').dataset.trackId = track.id;
+    document.getElementById('shareTrackBtn').dataset.trackId = track.id;
 
     // Show modal
     document.getElementById('trackInfoModal').classList.remove('hidden');
@@ -2133,5 +2154,44 @@ async function updateTrackType(id, value, label, icon, order = 0) {
     } catch (error) {
         console.error('Error updating track type:', error);
         alert('Erreur lors de la mise à jour du type');
+    }
+}
+
+// Share track - generate and copy shareable link
+function shareTrack(trackId) {
+    const track = state.tracks.find(t => t.id === trackId);
+    if (!track) {
+        alert('Trace introuvable');
+        return;
+    }
+
+    // Generate shareable URL with track ID as query parameter
+    const shareUrl = `${window.location.origin}${window.location.pathname}?track=${trackId}`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('Lien copié dans le presse-papier !\n\n' + shareUrl);
+    }).catch(err => {
+        console.error('Error copying to clipboard:', err);
+        // Fallback: show URL in alert for manual copy
+        prompt('Copiez ce lien pour partager la trace:', shareUrl);
+    });
+}
+
+// Check if URL contains a track ID and open it automatically
+function checkForSharedTrack() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const trackId = urlParams.get('track');
+
+    if (trackId) {
+        // Add a delay to ensure everything is loaded and rendered
+        setTimeout(() => {
+            const track = state.tracks.find(t => t.id === trackId);
+            if (track) {
+                showTrackInfoModal(track, true); // true = shared link mode
+            } else {
+                console.warn('Track not found:', trackId);
+            }
+        }, 500);
     }
 }
