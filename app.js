@@ -22,7 +22,11 @@ const state = {
     },
     currentFilter: 'all',
     currentView: 'map',
-    searchTerm: ''
+    searchTerm: '',
+    filters: {
+        completion: 'all', // 'all', 'completed', 'todo'
+        labels: [] // Array of selected label IDs
+    }
 };
 
 // Initialize the application
@@ -176,6 +180,17 @@ function attachEventListeners() {
     document.getElementById('fabButton').addEventListener('click', () => {
         document.getElementById('gpxUploadFab').click();
     });
+
+    // Filter button
+    document.getElementById('filterButton').addEventListener('click', showFilterModal);
+    document.getElementById('closeFilterModal').addEventListener('click', closeFilterModal);
+    document.getElementById('filterModal').addEventListener('click', (e) => {
+        if (e.target.id === 'filterModal') {
+            closeFilterModal();
+        }
+    });
+    document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    document.getElementById('resetFilters').addEventListener('click', resetFilters);
 
     // Upload modal
     document.getElementById('closeUploadModal').addEventListener('click', () => {
@@ -1053,7 +1068,37 @@ function closeTrackInfoModal() {
 
 // Render tracks list (simplified - no sidebar)
 function renderTracks() {
-    // No sidebar to render anymore
+    // Apply filters to show/hide tracks on map
+    state.tracks.forEach(track => {
+        const layerGroup = state.layers.tracks[track.id];
+        if (!layerGroup) return;
+
+        let shouldShow = true;
+
+        // Apply completion filter
+        if (state.filters.completion === 'completed' && !track.completedAt) {
+            shouldShow = false;
+        } else if (state.filters.completion === 'todo' && track.completedAt) {
+            shouldShow = false;
+        }
+
+        // Apply label filters (if any labels are selected)
+        if (shouldShow && state.filters.labels.length > 0) {
+            // Track must have at least one of the selected labels
+            const trackLabelIds = track.labels ? track.labels.map(tl => tl.label.id) : [];
+            const hasMatchingLabel = state.filters.labels.some(labelId => trackLabelIds.includes(labelId));
+            if (!hasMatchingLabel) {
+                shouldShow = false;
+            }
+        }
+
+        // Show or hide the track
+        if (shouldShow && !state.map.hasLayer(layerGroup)) {
+            state.map.addLayer(layerGroup);
+        } else if (!shouldShow && state.map.hasLayer(layerGroup)) {
+            state.map.removeLayer(layerGroup);
+        }
+    });
 }
 
 // Get icon for track type
@@ -1316,7 +1361,8 @@ async function loadLabelsFromServer() {
         const result = await response.json();
 
         if (result.success && result.labels) {
-            state.labels = result.labels.map(label => label.name).sort();
+            // Store full label objects (with id and name), sorted by name
+            state.labels = result.labels.sort((a, b) => a.name.localeCompare(b.name));
         }
     } catch (error) {
         console.error('Error loading labels from server:', error);
@@ -1514,11 +1560,12 @@ function renderLabelSuggestions() {
         return;
     }
 
-    container.innerHTML = existingLabels.map(label => {
-        const isAlreadyAdded = currentTrackLabels.includes(label);
+    container.innerHTML = existingLabels.map(labelObj => {
+        const labelName = labelObj.name;
+        const isAlreadyAdded = currentTrackLabels.includes(labelName);
         const disabledClass = isAlreadyAdded ? ' disabled' : '';
 
-        return `<span class="label-suggestion${disabledClass}" data-label="${label.replace(/"/g, '&quot;')}">${label}</span>`;
+        return `<span class="label-suggestion${disabledClass}" data-label="${labelName.replace(/"/g, '&quot;')}">${labelName}</span>`;
     }).join('');
 
     // Attach event listeners to suggestion buttons
@@ -2194,4 +2241,67 @@ function checkForSharedTrack() {
             }
         }, 500);
     }
+}
+
+// Filter Modal Functions
+function showFilterModal() {
+    // Set current filter values in the modal
+    const completionFilter = state.filters.completion;
+    document.querySelector(`input[name="completionFilter"][value="${completionFilter}"]`).checked = true;
+
+    // Populate label filters
+    const labelFiltersContainer = document.getElementById('labelFiltersContainer');
+    labelFiltersContainer.innerHTML = '';
+
+    if (state.labels.length === 0) {
+        labelFiltersContainer.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Aucun libellé disponible</p>';
+    } else {
+        state.labels.forEach(label => {
+            const isChecked = state.filters.labels.includes(label.id);
+            const labelFilterHtml = `
+                <label class="filter-option">
+                    <input type="checkbox" name="labelFilter" value="${label.id}" ${isChecked ? 'checked' : ''}>
+                    <span>${label.name}</span>
+                </label>
+            `;
+            labelFiltersContainer.insertAdjacentHTML('beforeend', labelFilterHtml);
+        });
+    }
+
+    document.getElementById('filterModal').classList.remove('hidden');
+}
+
+function closeFilterModal() {
+    document.getElementById('filterModal').classList.add('hidden');
+}
+
+function applyFilters() {
+    // Get selected completion filter
+    const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
+    state.filters.completion = completionFilter;
+
+    // Get selected label filters
+    const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
+    state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
+
+    // Re-render tracks with filters
+    renderTracks();
+
+    closeFilterModal();
+}
+
+function resetFilters() {
+    // Reset all filters to default
+    state.filters.completion = 'all';
+    state.filters.labels = [];
+
+    document.querySelector('input[name="completionFilter"][value="all"]').checked = true;
+    document.querySelectorAll('input[name="labelFilter"]:checked').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    // Re-render tracks
+    renderTracks();
+
+    closeFilterModal();
 }

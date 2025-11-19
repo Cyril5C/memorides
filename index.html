@@ -34,6 +34,9 @@
 
         <!-- Floating Add Button -->
         <button class="fab" id="fabButton" title="Ajouter une trace"></button>
+
+        <!-- Floating Filter Button -->
+        <button class="filter-fab" id="filterButton" title="Filtrer les traces">🔍</button>
     </div>
 
     <!-- Photo Modal -->
@@ -243,6 +246,44 @@
 
     <!-- EXIF reader for photo geotags -->
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+
+    <!-- Filter Modal -->
+    <div id="filterModal" class="modal hidden">
+        <div class="modal-content modal-form">
+            <button class="modal-close" id="closeFilterModal"></button>
+            <h3>Filtrer les traces</h3>
+
+            <div class="filter-section">
+                <h4>Statut</h4>
+                <div class="filter-options">
+                    <label class="filter-option">
+                        <input type="radio" name="completionFilter" value="all" checked>
+                        <span>Toutes</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="radio" name="completionFilter" value="completed">
+                        <span>✅ Faites</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="radio" name="completionFilter" value="todo">
+                        <span>📝 À faire</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h4>Libellés</h4>
+                <div class="filter-options" id="labelFiltersContainer">
+                    <!-- Labels will be populated dynamically -->
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" id="applyFilters">Appliquer</button>
+                <button type="button" class="btn btn-secondary" id="resetFilters">Réinitialiser</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Custom JS -->
     <script src="app.js"></script>
