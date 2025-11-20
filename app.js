@@ -750,14 +750,14 @@ window.expandTrackPhoto = function(photoId, trackId) {
 
     // Show navigation buttons only if there are multiple photos
     const navigationButtons = trackPhotos.length > 1 ? `
-        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001;" title="Photo précédente">‹</button>
-        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.9); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001;" title="Photo suivante">›</button>
-        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); border-radius: 4px; padding: 8px 12px; font-size: 14px; z-index: 2001;">${currentIndex + 1} / ${trackPhotos.length}</div>
+        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.3); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(8px);" title="Photo précédente">‹</button>
+        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.3); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(8px);" title="Photo suivante">›</button>
+        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.3); border-radius: 4px; padding: 8px 12px; font-size: 14px; z-index: 2001; color: white; backdrop-filter: blur(8px);">${currentIndex + 1} / ${trackPhotos.length}</div>
     ` : '';
 
     overlay.innerHTML = `
         <img id="expandedPhotoImg" src="${photoUrl}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
-        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001;" title="Fermer">✕</button>
+        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.3); border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001; color: white; backdrop-filter: blur(8px);" title="Fermer">✕</button>
         ${navigationButtons}
     `;
 
