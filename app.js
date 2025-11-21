@@ -1092,9 +1092,6 @@ function closeTrackInfoModal() {
 function renderTracks() {
     // Apply filters to show/hide tracks on map
     state.tracks.forEach(track => {
-        const layerGroup = state.layers.tracks[track.id];
-        if (!layerGroup) return;
-
         let shouldShow = true;
 
         // Apply completion filter
@@ -1114,11 +1111,23 @@ function renderTracks() {
             }
         }
 
-        // Show or hide the track
-        if (shouldShow && !state.map.hasLayer(layerGroup)) {
-            state.map.addLayer(layerGroup);
-        } else if (!shouldShow && state.map.hasLayer(layerGroup)) {
-            state.map.removeLayer(layerGroup);
+        // Get or create layer
+        const layerGroup = state.layers.tracks[track.id];
+
+        if (shouldShow) {
+            // Track should be visible
+            if (!layerGroup) {
+                // Create layer if it doesn't exist
+                addTrackToMap(track);
+            } else if (!state.map.hasLayer(layerGroup)) {
+                // Add existing layer to map
+                state.map.addLayer(layerGroup);
+            }
+        } else {
+            // Track should be hidden
+            if (layerGroup && state.map.hasLayer(layerGroup)) {
+                state.map.removeLayer(layerGroup);
+            }
         }
     });
 }
@@ -1404,12 +1413,13 @@ async function loadTracksFromServer(retryCount = 0) {
                         };
 
                         state.tracks.push(track);
-                        addTrackToMap(track);
+                        // Don't add to map here - renderTracks() will handle it with filters
                     }
                 }
             }
         }
 
+        // renderTracks() will add tracks to map based on active filters
         renderTracks();
     } catch (error) {
         // Retry once on first load before showing error (handles PWA first-load race condition)
