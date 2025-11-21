@@ -1156,12 +1156,13 @@ function focusTrack(trackId) {
 function downloadTrack(trackId) {
     const track = state.tracks.find(t => t.id.toString() === trackId.toString());
     if (track && track.filename) {
-        // Create a download link to the GPX file
-        const downloadUrl = `${API_BASE_URL}/gpx/${track.filename}`;
+        // Create a download link to the GPX file - encode filename for special characters
+        const encodedFilename = encodeURIComponent(track.filename);
+        const downloadUrl = `${API_BASE_URL}/gpx/${encodedFilename}`;
 
         // Create a temporary anchor element and trigger download
         const link = document.createElement('a');
-        link.href = `/uploads/gpx/${track.filename}`;
+        link.href = `/uploads/gpx/${encodedFilename}`;
         link.download = track.filename;
         document.body.appendChild(link);
         link.click();
@@ -1174,8 +1175,9 @@ async function changeTrackColor(trackId, newColor) {
     const track = state.tracks.find(t => t.id.toString() === trackId.toString());
     if (track) {
         try {
-            // Update on server
-            const response = await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+            // Update on server - encode filename for special characters
+            const encodedFilename = encodeURIComponent(track.filename);
+            const response = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1210,9 +1212,10 @@ async function deleteTrack(trackId) {
 
         if (track) {
             try {
-                // Delete from server
+                // Delete from server - encode filename for special characters
                 if (track.filename) {
-                    await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+                    const encodedFilename = encodeURIComponent(track.filename);
+                    await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
                         method: 'DELETE'
                     });
                 }
@@ -1244,7 +1247,8 @@ async function handleClearAll() {
             // Delete all tracks from server
             for (const track of state.tracks) {
                 if (track.filename) {
-                    await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+                    const encodedFilename = encodeURIComponent(track.filename);
+                    await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
                         method: 'DELETE'
                     });
                 }
@@ -1322,7 +1326,8 @@ async function loadSingleTrack(trackId) {
             }
 
             console.log(`📄 Loading GPX file: ${trackData.filename}`);
-            const contentResponse = await fetch(`${API_BASE_URL}/gpx/${trackData.filename}`);
+            const encodedFilename = encodeURIComponent(trackData.filename);
+            const contentResponse = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`);
 
             if (!contentResponse.ok) {
                 console.error(`❌ GPX file not found: ${trackData.filename}`);
@@ -1389,8 +1394,9 @@ async function loadTracksFromServer(retryCount = 0) {
 
             for (const trackData of tracksToLoad) {
                 console.log(`📄 Loading GPX file: ${trackData.filename}`);
-                // Get GPX content
-                const contentResponse = await fetch(`${API_BASE_URL}/gpx/${trackData.filename}`);
+                // Get GPX content - encode filename to handle special characters
+                const encodedFilename = encodeURIComponent(trackData.filename);
+                const contentResponse = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`);
 
                 // Skip if file not found (happens when volume is not persistent)
                 if (!contentResponse.ok) {
@@ -1693,7 +1699,8 @@ async function handleTrackEdit(event) {
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
 
     try {
-        const response = await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+        const encodedFilename = encodeURIComponent(track.filename);
+        const response = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
@@ -1764,7 +1771,8 @@ async function handleTrackDelete() {
     if (!confirmed) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/gpx/${track.filename}`, {
+        const encodedFilename = encodeURIComponent(track.filename);
+        const response = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
             method: 'DELETE'
         });
 
