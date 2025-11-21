@@ -24,6 +24,7 @@ const state = {
     currentView: 'map',
     searchTerm: '',
     filters: {
+        display: 'recent', // 'recent', 'all'
         completion: 'all', // 'all', 'completed', 'todo'
         labels: [] // Array of selected label IDs
     }
@@ -1365,8 +1366,19 @@ async function loadTracksFromServer(retryCount = 0) {
         console.log('Tracks loaded:', result);
 
         if (result.success && result.tracks && result.tracks.length > 0) {
-            console.log(`📍 Loading ${result.tracks.length} tracks from database...`);
-            for (const trackData of result.tracks) {
+            // If in "recent" mode, only load the 3 most recent tracks
+            let tracksToLoad = result.tracks;
+            if (state.filters.display === 'recent') {
+                // Sort by createdAt descending and take first 3
+                tracksToLoad = [...result.tracks]
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, 3);
+                console.log(`📍 Loading ${tracksToLoad.length} recent tracks (out of ${result.tracks.length} total)...`);
+            } else {
+                console.log(`📍 Loading ${result.tracks.length} tracks from database...`);
+            }
+
+            for (const trackData of tracksToLoad) {
                 console.log(`📄 Loading GPX file: ${trackData.filename}`);
                 // Get GPX content
                 const contentResponse = await fetch(`${API_BASE_URL}/gpx/${trackData.filename}`);
@@ -2323,6 +2335,9 @@ function checkForSharedTrack() {
 // Filter Modal Functions
 function showFilterModal() {
     // Set current filter values in the modal
+    const displayFilter = state.filters.display;
+    document.querySelector(`input[name="displayFilter"][value="${displayFilter}"]`).checked = true;
+
     const completionFilter = state.filters.completion;
     document.querySelector(`input[name="completionFilter"][value="${completionFilter}"]`).checked = true;
 
@@ -2352,7 +2367,13 @@ function closeFilterModal() {
     document.getElementById('filterModal').classList.add('hidden');
 }
 
-function applyFilters() {
+async function applyFilters() {
+    const previousDisplayFilter = state.filters.display;
+
+    // Get selected display filter
+    const displayFilter = document.querySelector('input[name="displayFilter"]:checked').value;
+    state.filters.display = displayFilter;
+
     // Get selected completion filter
     const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
     state.filters.completion = completionFilter;
@@ -2361,24 +2382,54 @@ function applyFilters() {
     const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
     state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
 
-    // Re-render tracks with filters
-    renderTracks();
+    // If display filter changed, reload tracks
+    if (displayFilter !== previousDisplayFilter) {
+        // Clear current tracks
+        state.tracks = [];
+        Object.values(state.layers.tracks).forEach(layer => {
+            state.map.removeLayer(layer);
+        });
+        state.layers.tracks = {};
+
+        // Reload with new filter
+        await loadTracksFromServer();
+    } else {
+        // Just re-render with existing tracks
+        renderTracks();
+    }
 
     closeFilterModal();
 }
 
-function resetFilters() {
+async function resetFilters() {
+    const previousDisplayFilter = state.filters.display;
+
     // Reset all filters to default
+    state.filters.display = 'recent';
     state.filters.completion = 'all';
     state.filters.labels = [];
 
+    document.querySelector('input[name="displayFilter"][value="recent"]').checked = true;
     document.querySelector('input[name="completionFilter"][value="all"]').checked = true;
     document.querySelectorAll('input[name="labelFilter"]:checked').forEach(checkbox => {
         checkbox.checked = false;
     });
 
-    // Re-render tracks
-    renderTracks();
+    // If display filter changed, reload tracks
+    if ('recent' !== previousDisplayFilter) {
+        // Clear current tracks
+        state.tracks = [];
+        Object.values(state.layers.tracks).forEach(layer => {
+            state.map.removeLayer(layer);
+        });
+        state.layers.tracks = {};
+
+        // Reload with new filter
+        await loadTracksFromServer();
+    } else {
+        // Just re-render with existing tracks
+        renderTracks();
+    }
 
     closeFilterModal();
 }
