@@ -31,15 +31,36 @@ const state = {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
-    initMap();
-    attachEventListeners();
-    await loadTrackTypesFromServer();
-    await loadLabelsFromServer();
-    await loadTracksFromServer();
-    await loadPhotosFromServer();
+    // Check if this is a shared link
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedTrackId = urlParams.get('track');
 
-    // Check if URL contains a track ID to open directly
-    checkForSharedTrack();
+    if (sharedTrackId) {
+        // Shared link mode: only load what's needed for the track detail
+        // Hide the main map view
+        document.getElementById('mapView').style.display = 'none';
+
+        attachEventListeners();
+        await loadTrackTypesFromServer();
+        await loadLabelsFromServer();
+
+        // Load only the specific track
+        await loadSingleTrack(sharedTrackId);
+
+        // Load photos for this track
+        await loadPhotosFromServer();
+
+        // Open the track detail modal
+        checkForSharedTrack();
+    } else {
+        // Normal mode: load everything
+        initMap();
+        attachEventListeners();
+        await loadTrackTypesFromServer();
+        await loadLabelsFromServer();
+        await loadTracksFromServer();
+        await loadPhotosFromServer();
+    }
 });
 
 // Initialize Leaflet Map
@@ -1264,6 +1285,62 @@ function formatDuration(minutes) {
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
     return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
+}
+
+// Load single track (for shared links)
+async function loadSingleTrack(trackId) {
+    try {
+        console.log('Loading single track:', trackId);
+        const response = await fetch(`${API_BASE_URL}/gpx/list`);
+
+        if (!response.ok) {
+            console.error('Failed to fetch tracks:', response.status, response.statusText);
+            alert(`Erreur lors du chargement de la trace: ${response.status}`);
+            return;
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.tracks) {
+            // Find the specific track
+            const trackData = result.tracks.find(t => t.id === trackId);
+
+            if (!trackData) {
+                console.error('Track not found:', trackId);
+                alert('Trace introuvable');
+                return;
+            }
+
+            console.log(`📄 Loading GPX file: ${trackData.filename}`);
+            const contentResponse = await fetch(`${API_BASE_URL}/gpx/${trackData.filename}`);
+
+            if (!contentResponse.ok) {
+                console.error(`❌ GPX file not found: ${trackData.filename}`);
+                alert('Fichier GPX introuvable');
+                return;
+            }
+
+            const contentResult = await contentResponse.json();
+
+            if (contentResult.success) {
+                const gpxData = parseGPX(contentResult.content);
+
+                if (gpxData) {
+                    const track = {
+                        ...trackData,
+                        points: gpxData.points,
+                        bounds: calculateBounds(gpxData.points)
+                    };
+
+                    state.tracks.push(track);
+                    console.log('✅ Track loaded:', track.name);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading track:', error);
+        alert(`Erreur lors du chargement de la trace: ${error.message}`);
+    }
 }
 
 // Load tracks from server
