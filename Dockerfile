@@ -6,11 +6,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Copy prisma schema first (needed for postinstall hook)
+# Copy prisma schema and switch script
 COPY prisma ./prisma/
+COPY switch-to-postgres.js ./
 
 # Switch schema to PostgreSQL for production
-RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+RUN node switch-to-postgres.js
 
 # Set a dummy DATABASE_URL for the build phase
 # This is only used for generating Prisma Client, not for actual DB connection
