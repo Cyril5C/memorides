@@ -2392,8 +2392,11 @@ async function applyFilters() {
     const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
     state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
 
+    console.log(`🔍 Filter change: ${previousDisplayFilter} -> ${displayFilter}`);
+
     // If display filter changed, reload tracks
     if (displayFilter !== previousDisplayFilter) {
+        console.log('🔄 Display filter changed, reloading tracks...');
         // Clear current tracks and layers completely
         state.tracks.forEach(track => {
             const layerGroup = state.layers.tracks[track.id];
@@ -2408,6 +2411,7 @@ async function applyFilters() {
         // Reload with new filter
         await loadTracksFromServer();
     } else {
+        console.log('🎨 Display filter unchanged, just re-rendering...');
         // Just re-render with existing tracks
         renderTracks();
     }

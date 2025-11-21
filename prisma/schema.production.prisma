@@ -1,12 +1,13 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Production Prisma schema for PostgreSQL
+// Used for export/import operations on Railway
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client-prod"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
