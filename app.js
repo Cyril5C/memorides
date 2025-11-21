@@ -2394,11 +2394,15 @@ async function applyFilters() {
 
     // If display filter changed, reload tracks
     if (displayFilter !== previousDisplayFilter) {
-        // Clear current tracks
-        state.tracks = [];
-        Object.values(state.layers.tracks).forEach(layer => {
-            state.map.removeLayer(layer);
+        // Clear current tracks and layers completely
+        state.tracks.forEach(track => {
+            const layerGroup = state.layers.tracks[track.id];
+            if (layerGroup) {
+                state.map.removeLayer(layerGroup);
+                layerGroup.clearLayers(); // Clear all layers in the group
+            }
         });
+        state.tracks = [];
         state.layers.tracks = {};
 
         // Reload with new filter
@@ -2427,11 +2431,15 @@ async function resetFilters() {
 
     // If display filter changed, reload tracks
     if ('recent' !== previousDisplayFilter) {
-        // Clear current tracks
-        state.tracks = [];
-        Object.values(state.layers.tracks).forEach(layer => {
-            state.map.removeLayer(layer);
+        // Clear current tracks and layers completely
+        state.tracks.forEach(track => {
+            const layerGroup = state.layers.tracks[track.id];
+            if (layerGroup) {
+                state.map.removeLayer(layerGroup);
+                layerGroup.clearLayers(); // Clear all layers in the group
+            }
         });
+        state.tracks = [];
         state.layers.tracks = {};
 
         // Reload with new filter
