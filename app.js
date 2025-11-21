@@ -1396,6 +1396,7 @@ async function loadTracksFromServer(retryCount = 0) {
                 console.log(`📄 Loading GPX file: ${trackData.filename}`);
                 // Get GPX content - encode filename to handle special characters
                 const encodedFilename = encodeURIComponent(trackData.filename);
+                console.log(`🔗 Encoded URL: ${API_BASE_URL}/gpx/${encodedFilename}`);
                 const contentResponse = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`);
 
                 // Skip if file not found (happens when volume is not persistent)

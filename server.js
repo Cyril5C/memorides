@@ -29,14 +29,15 @@ function sanitizeFilename(filename) {
     // Extract basename to remove any path components (removes ../ attacks)
     const basename = path.basename(filename);
     // Remove ONLY dangerous characters (null bytes, path separators)
-    // Keep Unicode characters, spaces, etc. for international filenames
-    return basename.replace(/[\x00-\x1f\x7f\/\\:*?"<>|]/g, '');
+    // Keep Unicode characters, spaces, pipe, etc. for international filenames
+    // Note: On Windows, | : * ? " < > are forbidden, but we allow | for Unix/Mac compatibility
+    return basename.replace(/[\x00-\x1f\x7f\/\\:*?"<>]/g, '');
 }
 
 // Security: Rate limiters
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More permissive in dev
     message: 'Trop de requêtes, réessayez plus tard',
     standardHeaders: true,
     legacyHeaders: false
