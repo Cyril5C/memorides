@@ -9,6 +9,9 @@ COPY package*.json ./
 # Copy prisma schema first (needed for postinstall hook)
 COPY prisma ./prisma/
 
+# Switch schema to PostgreSQL for production
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+
 # Set a dummy DATABASE_URL for the build phase
 # This is only used for generating Prisma Client, not for actual DB connection
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
