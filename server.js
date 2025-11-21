@@ -966,6 +966,37 @@ app.get('/api/export/backup', async (req, res) => {
     }
 });
 
+// Admin endpoint to cleanup orphaned tracks
+app.post('/api/admin/cleanup-orphaned-tracks', async (req, res) => {
+    try {
+        const tracks = await prisma.track.findMany({
+            select: { id: true, filename: true, name: true }
+        });
+
+        let deleted = 0;
+        const deletedTracks = [];
+
+        for (const track of tracks) {
+            const filePath = path.join(gpxDir, track.filename);
+
+            if (!fs.existsSync(filePath)) {
+                await prisma.track.delete({ where: { id: track.id } });
+                deleted++;
+                deletedTracks.push({ id: track.id, name: track.name || track.filename });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `${deleted} orphaned tracks deleted`,
+            deletedTracks
+        });
+    } catch (error) {
+        console.error('Error cleaning orphaned tracks:', error);
+        res.status(500).json({ error: 'Failed to cleanup orphaned tracks' });
+    }
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
