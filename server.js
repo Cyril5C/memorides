@@ -138,7 +138,19 @@ const storage = multer.diskStorage({
     },
     filename: function (_req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname);
+
+        // Fix UTF-8 encoding: browsers may send filename as ISO-8859-1
+        let filename = file.originalname;
+        try {
+            // Try to decode as if it was incorrectly encoded as ISO-8859-1
+            const buffer = Buffer.from(filename, 'binary');
+            filename = buffer.toString('utf8');
+        } catch (error) {
+            // If decoding fails, keep original name
+            console.log('Could not fix filename encoding:', filename);
+        }
+
+        cb(null, uniqueSuffix + '-' + filename);
     }
 });
 
