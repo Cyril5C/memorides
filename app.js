@@ -2896,49 +2896,62 @@ function closeFilterModal() {
 }
 
 async function applyFilters() {
-    const previousDisplayFilter = state.filters.display;
+    const applyButton = document.getElementById('applyFilters');
+    const originalText = applyButton.textContent;
 
-    // Get selected display filter
-    const displayFilter = document.querySelector('input[name="displayFilter"]:checked').value;
-    state.filters.display = displayFilter;
+    // Show loader
+    applyButton.disabled = true;
+    applyButton.innerHTML = '<span class="spinner"></span> Application...';
 
-    // Get selected completion filter
-    const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
-    state.filters.completion = completionFilter;
+    try {
+        const previousDisplayFilter = state.filters.display;
 
-    // Get selected label filters
-    const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
-    state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
+        // Get selected display filter
+        const displayFilter = document.querySelector('input[name="displayFilter"]:checked').value;
+        state.filters.display = displayFilter;
 
-    console.log(`🔍 Filter change: ${previousDisplayFilter} -> ${displayFilter}`);
+        // Get selected completion filter
+        const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
+        state.filters.completion = completionFilter;
 
-    // If display filter changed, reload tracks
-    if (displayFilter !== previousDisplayFilter) {
-        console.log('🔄 Display filter changed, reloading tracks...');
-        // Clear current tracks and layers completely
-        state.tracks.forEach(track => {
-            const layerGroup = state.layers.tracks[track.id];
-            if (layerGroup) {
-                state.map.removeLayer(layerGroup);
-                layerGroup.clearLayers(); // Clear all layers in the group
+        // Get selected label filters
+        const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
+        state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
+
+        console.log(`🔍 Filter change: ${previousDisplayFilter} -> ${displayFilter}`);
+
+        // If display filter changed, reload tracks
+        if (displayFilter !== previousDisplayFilter) {
+            console.log('🔄 Display filter changed, reloading tracks...');
+            // Clear current tracks and layers completely
+            state.tracks.forEach(track => {
+                const layerGroup = state.layers.tracks[track.id];
+                if (layerGroup) {
+                    state.map.removeLayer(layerGroup);
+                    layerGroup.clearLayers(); // Clear all layers in the group
+                }
+            });
+            state.tracks = [];
+            state.layers.tracks = {};
+
+            // Reload with new filter
+            await loadTracksFromServer();
+        } else {
+            console.log('🎨 Display filter unchanged, just re-rendering...');
+            // Just re-render with existing tracks
+            renderTracks();
+            // Also update list view if currently active
+            if (state.currentView === 'list') {
+                renderListView();
             }
-        });
-        state.tracks = [];
-        state.layers.tracks = {};
-
-        // Reload with new filter
-        await loadTracksFromServer();
-    } else {
-        console.log('🎨 Display filter unchanged, just re-rendering...');
-        // Just re-render with existing tracks
-        renderTracks();
-        // Also update list view if currently active
-        if (state.currentView === 'list') {
-            renderListView();
         }
-    }
 
-    closeFilterModal();
+        closeFilterModal();
+    } finally {
+        // Restore button state
+        applyButton.disabled = false;
+        applyButton.textContent = originalText;
+    }
 }
 
 async function resetFilters() {
