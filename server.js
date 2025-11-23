@@ -375,19 +375,7 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
 });
 
 // Update track metadata
-app.patch('/api/gpx/:filename',
-    param('filename').isString().trim().notEmpty(),
-    body('name').optional().isString().trim().isLength({ max: 200 }),
-    body('title').optional().isString().trim().isLength({ max: 200 }),
-    body('comments').optional().isString().trim().isLength({ max: 5000 }),
-    body('labels').optional().isArray(),
-    body('labels.*').optional().isString().trim().isLength({ max: 50 }),
-    body('type').optional().isString().trim().isLength({ max: 50 }),
-    body('direction').optional().isString().trim().isLength({ max: 50 }),
-    body('color').optional().isString().trim().matches(/^#[0-9A-Fa-f]{6}$/),
-    body('completedAt').optional().isISO8601(),
-    handleValidationErrors,
-    async (req, res) => {
+app.patch('/api/gpx/:filename', async (req, res) => {
         try {
             const { filename } = req.params;
             const { name, title, comments, labels, type, direction, color, completedAt } = req.body;
@@ -440,8 +428,7 @@ app.patch('/api/gpx/:filename',
                     data: labelRecords.map(label => ({
                         trackId: existingTrack.id,
                         labelId: label.id
-                    })),
-                    skipDuplicates: true
+                    }))
                 });
             }
         }
@@ -459,12 +446,11 @@ app.patch('/api/gpx/:filename',
         });
 
             res.json({ success: true, track: updatedTrack });
-        } catch (error) {
-            console.error('Error updating track:', error);
-            res.status(500).json({ error: 'Error updating track' });
-        }
+    } catch (error) {
+        console.error('Error updating track:', error);
+        res.status(500).json({ error: 'Error updating track' });
     }
-);
+});
 
 // Upload photo with metadata
 app.post('/api/photos/upload',
