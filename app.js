@@ -615,13 +615,73 @@ function addTrackToMap(track) {
     state.layers.tracks[track.id] = layerGroup;
 }
 
+// Compress image to be under 1MB
+async function compressImage(file, maxSizeMB = 1) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const img = new Image();
+            img.src = e.target.result;
+
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                let width = img.width;
+                let height = img.height;
+                let quality = 0.9;
+
+                // Start with original dimensions
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Function to try compression
+                const tryCompress = () => {
+                    canvas.toBlob((blob) => {
+                        const sizeMB = blob.size / (1024 * 1024);
+
+                        if (sizeMB <= maxSizeMB || quality <= 0.1) {
+                            // Success or can't compress more
+                            console.log(`✅ Photo compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${sizeMB.toFixed(2)}MB (quality: ${quality})`);
+                            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                        } else {
+                            // Try with lower quality
+                            quality -= 0.1;
+
+                            // If quality is getting too low, try reducing dimensions
+                            if (quality < 0.5 && width > 1920) {
+                                width = Math.floor(width * 0.8);
+                                height = Math.floor(height * 0.8);
+                                canvas.width = width;
+                                canvas.height = height;
+                                ctx.drawImage(img, 0, 0, width, height);
+                                quality = 0.9; // Reset quality for new size
+                            }
+
+                            tryCompress();
+                        }
+                    }, 'image/jpeg', quality);
+                };
+
+                tryCompress();
+            };
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
 // Handle Photo Upload
 async function handlePhotoUpload(event) {
     const files = Array.from(event.target.files);
 
     for (const file of files) {
         try {
-            // Extract EXIF data first
+            console.log(`📸 Processing photo: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+
+            // Extract EXIF data first (before compression)
             const gpsData = await extractGPSData(file);
 
             if (!gpsData) {
@@ -629,9 +689,18 @@ async function handlePhotoUpload(event) {
                 continue;
             }
 
+            // Compress image if larger than 1MB
+            let uploadFile = file;
+            if (file.size > 1024 * 1024) {
+                console.log('🗜️  Compressing image...');
+                uploadFile = await compressImage(file);
+            } else {
+                console.log('✅ Image already under 1MB, no compression needed');
+            }
+
             // Upload file with metadata to server
             const formData = new FormData();
-            formData.append('photo', file);
+            formData.append('photo', uploadFile);
             formData.append('name', file.name);
             formData.append('latitude', gpsData.latitude.toString());
             formData.append('longitude', gpsData.longitude.toString());
