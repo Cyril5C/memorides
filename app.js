@@ -944,13 +944,56 @@ function showPhotoModal(photo) {
     document.getElementById('photoModal').classList.remove('hidden');
 }
 
+// Calculate photo's distance along track from start
+function calculatePhotoDistanceAlongTrack(photo, trackPoints) {
+    if (!trackPoints || trackPoints.length === 0) return 0;
+
+    let minDistance = Infinity;
+    let closestPointIndex = 0;
+
+    // Find the closest track point to the photo
+    for (let i = 0; i < trackPoints.length; i++) {
+        const dist = haversineDistance(
+            photo.latitude, photo.longitude,
+            trackPoints[i].lat, trackPoints[i].lon
+        );
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestPointIndex = i;
+        }
+    }
+
+    // Calculate cumulative distance from start to this point
+    let distanceFromStart = 0;
+    for (let i = 1; i <= closestPointIndex; i++) {
+        distanceFromStart += haversineDistance(
+            trackPoints[i - 1].lat, trackPoints[i - 1].lon,
+            trackPoints[i].lat, trackPoints[i].lon
+        );
+    }
+
+    return distanceFromStart;
+}
+
 // Global function to expand photo in track detail view
 window.expandTrackPhoto = function(photoId, trackId) {
     const photo = state.photos.find(p => p.id === photoId);
     if (!photo) return;
 
     // Get all photos for this track
-    const trackPhotos = state.photos.filter(p => p.trackId === (trackId || photo.trackId));
+    let trackPhotos = state.photos.filter(p => p.trackId === (trackId || photo.trackId));
+
+    // Sort photos chronologically by their position along the track
+    const track = state.tracks.find(t => t.id === (trackId || photo.trackId));
+    if (track && track.points && track.points.length > 0) {
+        trackPhotos = trackPhotos
+            .map(p => ({
+                ...p,
+                distanceAlongTrack: calculatePhotoDistanceAlongTrack(p, track.points)
+            }))
+            .sort((a, b) => a.distanceAlongTrack - b.distanceAlongTrack);
+    }
+
     const currentIndex = trackPhotos.findIndex(p => p.id === photoId);
 
     const photoUrl = `${BASE_URL}${photo.path}`;
@@ -975,14 +1018,14 @@ window.expandTrackPhoto = function(photoId, trackId) {
 
     // Show navigation buttons only if there are multiple photos
     const navigationButtons = trackPhotos.length > 1 ? `
-        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Photo précédente">‹</button>
-        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Photo suivante">›</button>
+        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 12px; cursor: pointer; font-size: 48px; z-index: 2001; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.8);" title="Photo précédente">‹</button>
+        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 12px; cursor: pointer; font-size: 48px; z-index: 2001; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.8);" title="Photo suivante">›</button>
         <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; font-size: 14px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">${currentIndex + 1} / ${trackPhotos.length}</div>
     ` : '';
 
     overlay.innerHTML = `
         <img id="expandedPhotoImg" src="${photoUrl}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
-        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Fermer">✕</button>
+        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: none; border: none; padding: 8px; cursor: pointer; font-size: 32px; z-index: 2001; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.8);" title="Fermer">✕</button>
         ${navigationButtons}
     `;
 
