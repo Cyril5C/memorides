@@ -213,11 +213,18 @@ function attachEventListeners() {
         showLabelsManagementModal();
     });
 
-    // Menu Export All
-    document.getElementById('menuExportAll').addEventListener('click', async (e) => {
+    // Menu Export Human-readable
+    document.getElementById('menuExportHuman').addEventListener('click', async (e) => {
         e.preventDefault();
         closeMenuFunc();
-        await exportAllData();
+        await exportHumanReadable();
+    });
+
+    // Menu Export Backup (for reimport)
+    document.getElementById('menuExportBackup').addEventListener('click', async (e) => {
+        e.preventDefault();
+        closeMenuFunc();
+        await exportBackup();
     });
 
     // Menu Logout
@@ -2579,15 +2586,58 @@ async function deleteLabel(labelId, labelName) {
     }
 }
 
-// Export All Data
-async function exportAllData() {
+// Export Human-Readable (organized by tracks)
+async function exportHumanReadable() {
     try {
-        showToast('📦', 'Export en cours...', 'Préparation du fichier ZIP', 3000);
+        showToast('👤', 'Export en cours...', 'Organisation des données', 3000);
 
         const response = await fetch(`${API_BASE_URL}/export/organized`);
 
         if (!response.ok) {
             throw new Error('Erreur lors de l\'export');
+        }
+
+        // Get the blob from the response
+        const blob = await response.blob();
+
+        // Get filename from header or use default
+        const contentDisposition = response.headers.get('content-disposition');
+        let filename = 'memorides-export.zip';
+        if (contentDisposition) {
+            const matches = /filename="([^"]+)"/.exec(contentDisposition);
+            if (matches && matches[1]) {
+                filename = matches[1];
+            }
+        }
+
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showToast('✅', 'Export réussi !', 'Archive organisée téléchargée', 2000);
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        showToast('❌', 'Erreur', 'Impossible d\'exporter les données');
+    }
+}
+
+// Export Backup (for reimport/machine)
+async function exportBackup() {
+    try {
+        showToast('💾', 'Backup en cours...', 'Sauvegarde complète', 3000);
+
+        const response = await fetch(`${API_BASE_URL}/export/backup`);
+
+        if (!response.ok) {
+            throw new Error('Erreur lors du backup');
         }
 
         // Get the blob from the response
@@ -2615,10 +2665,10 @@ async function exportAllData() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        showToast('✅', 'Export réussi !', 'Le fichier ZIP a été téléchargé', 2000);
+        showToast('✅', 'Backup réussi !', 'Sauvegarde complète téléchargée', 2000);
     } catch (error) {
-        console.error('Error exporting data:', error);
-        showToast('❌', 'Erreur', 'Impossible d\'exporter les données');
+        console.error('Error creating backup:', error);
+        showToast('❌', 'Erreur', 'Impossible de créer le backup');
     }
 }
 
