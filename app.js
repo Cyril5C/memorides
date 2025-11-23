@@ -764,6 +764,21 @@ async function handlePhotoUpload(event) {
 
     if (files.length === 0) return;
 
+    // Check for HEIC files (not supported by browsers)
+    const heicFiles = files.filter(f =>
+        f.name.toLowerCase().endsWith('.heic') ||
+        f.name.toLowerCase().endsWith('.heif') ||
+        f.type === 'image/heic' ||
+        f.type === 'image/heif'
+    );
+
+    if (heicFiles.length > 0) {
+        const fileList = heicFiles.map(f => `• ${f.name}`).join('\n');
+        alert(`❌ Format HEIC non supporté\n\n${heicFiles.length} photo(s) au format HEIC détectée(s):\n${fileList}\n\nSur iOS:\n1. Réglages → Appareil photo → Formats\n2. Sélectionnez "Le plus compatible"\n\nOu utilisez l'app Photos pour partager en JPEG.`);
+        event.target.value = '';
+        return;
+    }
+
     console.log(`\n📤 Starting upload of ${files.length} photo(s)...`);
     const startTime = Date.now();
 
