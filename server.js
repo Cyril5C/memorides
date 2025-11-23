@@ -11,11 +11,38 @@ const helmet = require('helmet');
 const compression = require('compression');
 const archiver = require('archiver');
 const session = require('express-session');
+const { body, param, validationResult } = require('express-validator');
+const pgSession = require('connect-pg-simple')(session);
 
 console.log('🔧 Initializing server...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
 console.log('PORT:', process.env.PORT || 3001);
 console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set');
+
+// Validate required environment variables in production
+if (process.env.NODE_ENV === 'production') {
+    const requiredVars = ['SESSION_SECRET', 'APP_PASSWORD', 'DATABASE_URL'];
+    const missing = requiredVars.filter(v => !process.env[v]);
+
+    if (missing.length > 0) {
+        console.error('❌ Missing required environment variables in production:', missing.join(', '));
+        console.error('Please set these variables before starting the server.');
+        process.exit(1);
+    }
+
+    // Warn if using default values
+    if (process.env.SESSION_SECRET === 'your-secret-key-change-in-production') {
+        console.error('❌ SESSION_SECRET is still set to default value!');
+        process.exit(1);
+    }
+
+    if (process.env.APP_PASSWORD === 'rides2024') {
+        console.error('⚠️  WARNING: APP_PASSWORD is set to default value "rides2024"');
+        console.error('This is insecure! Please change it immediately.');
+    }
+
+    console.log('✅ Environment variables validated');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +62,19 @@ function sanitizeFilename(filename) {
     return basename.replace(/[\x00-\x1f\x7f\/\\:*?"<>]/g, '');
 }
 
+// Validation middleware: Check for validation errors
+function handleValidationErrors(req, res, next) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            success: false,
+            error: 'Validation failed',
+            details: errors.array()
+        });
+    }
+    next();
+}
+
 // Security: Rate limiters
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -50,6 +90,15 @@ const uploadLimiter = rateLimit({
     message: 'Trop d\'uploads, réessayez dans 1 heure',
     standardHeaders: true,
     legacyHeaders: false
+});
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 login attempts per 15 minutes
+    message: 'Trop de tentatives de connexion, réessayez dans 15 minutes',
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true // Only count failed attempts
 });
 
 // Middleware
@@ -97,7 +146,7 @@ app.use(cors({
 app.use(compression());
 
 // Session configuration
-app.use(session({
+const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
     resave: false,
     saveUninitialized: false,
@@ -106,7 +155,21 @@ app.use(session({
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
-}));
+};
+
+// Use PostgreSQL session store in production
+if (process.env.NODE_ENV === 'production') {
+    sessionConfig.store = new pgSession({
+        conString: process.env.DATABASE_URL,
+        tableName: 'session', // Table name for sessions
+        createTableIfMissing: true // Auto-create session table
+    });
+    console.log('✅ Using PostgreSQL session store');
+} else {
+    console.log('⚠️  Using MemoryStore (development only)');
+}
+
+app.use(session(sessionConfig));
 
 // Rate limiting on API routes
 app.use('/api', generalLimiter);
@@ -126,18 +189,23 @@ function requireAuth(req, res, next) {
     res.redirect('/login');
 }
 
-// Login route (no auth required)
-app.post('/api/auth/login', (req, res) => {
-    const { password } = req.body;
-    const correctPassword = process.env.APP_PASSWORD || 'rides2024';
+// Login route (no auth required) - with rate limiting and validation
+app.post('/api/auth/login',
+    loginLimiter,
+    body('password').isString().trim().notEmpty().isLength({ min: 1, max: 100 }),
+    handleValidationErrors,
+    (req, res) => {
+        const { password } = req.body;
+        const correctPassword = process.env.APP_PASSWORD || 'rides2024';
 
-    if (password === correctPassword) {
-        req.session.authenticated = true;
-        res.json({ success: true });
-    } else {
-        res.json({ success: false, message: 'Mot de passe incorrect' });
+        if (password === correctPassword) {
+            req.session.authenticated = true;
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, message: 'Mot de passe incorrect' });
+        }
     }
-});
+);
 
 // Logout route
 app.post('/api/auth/logout', (req, res) => {
@@ -179,11 +247,19 @@ const uploadsDir = path.join(__dirname, 'uploads');
 const gpxDir = path.join(uploadsDir, 'gpx');
 const photosDir = path.join(uploadsDir, 'photos');
 
-[uploadsDir, gpxDir, photosDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
+// Initialize directories asynchronously (will be called during server startup)
+async function ensureDirectories() {
+    const dirs = [uploadsDir, gpxDir, photosDir];
+    await Promise.all(
+        dirs.map(dir =>
+            fsPromises.mkdir(dir, { recursive: true })
+                .catch(err => {
+                    if (err.code !== 'EEXIST') throw err;
+                })
+        )
+    );
+    console.log('📁 Upload directories verified');
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -293,10 +369,22 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
 });
 
 // Update track metadata
-app.patch('/api/gpx/:filename', async (req, res) => {
-    try {
-        const { filename } = req.params;
-        const { name, title, comments, labels, type, direction, color, completedAt } = req.body;
+app.patch('/api/gpx/:filename',
+    param('filename').isString().trim().notEmpty(),
+    body('name').optional().isString().trim().isLength({ max: 200 }),
+    body('title').optional().isString().trim().isLength({ max: 200 }),
+    body('comments').optional().isString().trim().isLength({ max: 5000 }),
+    body('labels').optional().isArray(),
+    body('labels.*').optional().isString().trim().isLength({ max: 50 }),
+    body('type').optional().isString().trim().isLength({ max: 50 }),
+    body('direction').optional().isString().trim().isLength({ max: 50 }),
+    body('color').optional().isString().trim().matches(/^#[0-9A-Fa-f]{6}$/),
+    body('completedAt').optional().isISO8601(),
+    handleValidationErrors,
+    async (req, res) => {
+        try {
+            const { filename } = req.params;
+            const { name, title, comments, labels, type, direction, color, completedAt } = req.body;
 
         // First, get the track to get its ID
         const existingTrack = await prisma.track.findUnique({
@@ -330,22 +418,25 @@ app.patch('/api/gpx/:filename', async (req, res) => {
 
             // Create new label relations if labels provided
             if (Array.isArray(labels) && labels.length > 0) {
-                for (const labelName of labels) {
-                    // Create or get label
-                    const label = await prisma.label.upsert({
-                        where: { name: labelName },
-                        create: { name: labelName },
-                        update: {}
-                    });
+                // Parallel upsert of all labels
+                const labelRecords = await Promise.all(
+                    labels.map(labelName =>
+                        prisma.label.upsert({
+                            where: { name: labelName },
+                            create: { name: labelName },
+                            update: {}
+                        })
+                    )
+                );
 
-                    // Create track-label relation
-                    await prisma.trackLabel.create({
-                        data: {
-                            trackId: existingTrack.id,
-                            labelId: label.id
-                        }
-                    });
-                }
+                // Batch create track-label relations
+                await prisma.trackLabel.createMany({
+                    data: labelRecords.map(label => ({
+                        trackId: existingTrack.id,
+                        labelId: label.id
+                    })),
+                    skipDuplicates: true
+                });
             }
         }
 
@@ -361,27 +452,46 @@ app.patch('/api/gpx/:filename', async (req, res) => {
             }
         });
 
-        res.json({ success: true, track: updatedTrack });
-    } catch (error) {
-        console.error('Error updating track:', error);
-        res.status(500).json({ error: 'Error updating track' });
+            res.json({ success: true, track: updatedTrack });
+        } catch (error) {
+            console.error('Error updating track:', error);
+            res.status(500).json({ error: 'Error updating track' });
+        }
     }
-});
+);
 
 // Upload photo with metadata
-app.post('/api/photos/upload', uploadLimiter, upload.single('photo'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+app.post('/api/photos/upload',
+    uploadLimiter,
+    upload.single('photo'),
+    body('name').optional().isString().trim().isLength({ max: 200 }),
+    body('latitude').notEmpty().isFloat({ min: -90, max: 90 }),
+    body('longitude').notEmpty().isFloat({ min: -180, max: 180 }),
+    body('trackId').optional().isInt(),
+    async (req, res, next) => {
+        // Validate after multer processes the file
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            // Delete uploaded file if validation fails
+            if (req.file) {
+                await fsPromises.unlink(req.file.path).catch(() => {});
+            }
+            return res.status(400).json({
+                success: false,
+                error: 'Validation failed',
+                details: errors.array()
+            });
         }
+        next();
+    },
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
 
-        // Extract metadata from request body
-        const { name, latitude, longitude, trackId } = req.body;
-
-        if (!latitude || !longitude) {
-            await fsPromises.unlink(req.file.path);
-            return res.status(400).json({ error: 'GPS coordinates required' });
-        }
+            // Extract metadata from request body
+            const { name, latitude, longitude, trackId } = req.body;
 
         // Save to database
         const photo = await prisma.photo.create({
@@ -404,16 +514,17 @@ app.post('/api/photos/upload', uploadLimiter, upload.single('photo'), async (req
                 size: req.file.size
             },
             photo
-        });
-    } catch (error) {
-        console.error('Error uploading photo:', error);
-        // Delete file if database save fails
-        if (req.file) {
-            await fsPromises.unlink(req.file.path);
+            });
+        } catch (error) {
+            console.error('Error uploading photo:', error);
+            // Delete file if database save fails
+            if (req.file) {
+                await fsPromises.unlink(req.file.path);
+            }
+            res.status(500).json({ error: 'Error uploading file' });
         }
-        res.status(500).json({ error: 'Error uploading file' });
     }
-});
+);
 
 // List all GPX tracks with metadata
 app.get('/api/gpx/list', async (_req, res) => {
@@ -605,9 +716,12 @@ app.get('/api/gpx/:filename', async (req, res) => {
 });
 
 // Delete GPX file and metadata
-app.delete('/api/gpx/:filename', async (req, res) => {
-    try {
-        const { filename } = req.params;
+app.delete('/api/gpx/:filename',
+    param('filename').isString().trim().notEmpty(),
+    handleValidationErrors,
+    async (req, res) => {
+        try {
+            const { filename } = req.params;
         const sanitized = sanitizeFilename(filename);
         const filePath = path.join(gpxDir, sanitized);
 
@@ -630,17 +744,26 @@ app.delete('/api/gpx/:filename', async (req, res) => {
 
         // Delete associated photo files and database entries
         if (track.photos && track.photos.length > 0) {
-            for (const photo of track.photos) {
-                const photoPath = path.join(photosDir, sanitizeFilename(photo.filename));
-                console.log(`Deleting photo file: ${photoPath}`);
-                if (fs.existsSync(photoPath)) {
-                    await fsPromises.unlink(photoPath);
-                }
-                // Delete photo from database
-                await prisma.photo.delete({
-                    where: { id: photo.id }
-                }).catch(err => console.error(`Error deleting photo ${photo.id}:`, err));
-            }
+            // Delete photo files in parallel
+            await Promise.all(
+                track.photos.map(async (photo) => {
+                    const photoPath = path.join(photosDir, sanitizeFilename(photo.filename));
+                    console.log(`Deleting photo file: ${photoPath}`);
+                    if (fs.existsSync(photoPath)) {
+                        try {
+                            await fsPromises.unlink(photoPath);
+                        } catch (err) {
+                            console.error(`Error deleting photo file ${photo.filename}:`, err);
+                        }
+                    }
+                })
+            );
+
+            // Batch delete photos from database
+            const photoIds = track.photos.map(p => p.id);
+            await prisma.photo.deleteMany({
+                where: { id: { in: photoIds } }
+            });
         }
 
         // Delete track-label relations
@@ -663,18 +786,22 @@ app.delete('/api/gpx/:filename', async (req, res) => {
             await fsPromises.unlink(filePath);
         }
 
-        console.log('Track deleted successfully');
-        res.json({ success: true, message: 'Track and associated data deleted' });
-    } catch (error) {
-        console.error('Error deleting GPX file:', error);
-        console.error('Error stack:', error.stack);
-        res.status(500).json({ error: 'Error deleting file', details: error.message });
+            console.log('Track deleted successfully');
+            res.json({ success: true, message: 'Track and associated data deleted' });
+        } catch (error) {
+            console.error('Error deleting GPX file:', error);
+            console.error('Error stack:', error.stack);
+            res.status(500).json({ error: 'Error deleting file', details: error.message });
+        }
     }
-});
+);
 
 // Delete photo and metadata
-app.delete('/api/photos/:filename', async (req, res) => {
-    try {
+app.delete('/api/photos/:filename',
+    param('filename').isString().trim().notEmpty(),
+    handleValidationErrors,
+    async (req, res) => {
+        try {
         const { filename } = req.params;
         const sanitized = sanitizeFilename(filename);
         const filePath = path.join(photosDir, sanitized);
@@ -689,12 +816,13 @@ app.delete('/api/photos/:filename', async (req, res) => {
             await fsPromises.unlink(filePath);
         }
 
-        res.json({ success: true, message: 'Photo deleted' });
-    } catch (error) {
-        console.error('Error deleting photo:', error);
-        res.status(500).json({ error: 'Error deleting file' });
+            res.json({ success: true, message: 'Photo deleted' });
+        } catch (error) {
+            console.error('Error deleting photo:', error);
+            res.status(500).json({ error: 'Error deleting file' });
+        }
     }
-});
+);
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
@@ -1258,16 +1386,22 @@ app.post('/api/admin/cleanup-orphaned-tracks', async (req, res) => {
     }
 });
 
-// Start server
-app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-    console.log(`📁 GPX files: ${gpxDir}`);
-    console.log(`📸 Photos: ${photosDir}`);
-
-    // Test database connection after server is up
+// Start server with async initialization
+async function startServer() {
     try {
-        await prisma.$queryRaw`SELECT 1`;
-        console.log('✅ Database connection verified');
+        // Ensure directories exist before starting server
+        await ensureDirectories();
+
+        // Start listening
+        app.listen(PORT, '0.0.0.0', async () => {
+            console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+            console.log(`📁 GPX files: ${gpxDir}`);
+            console.log(`📸 Photos: ${photosDir}`);
+
+            // Test database connection after server is up
+            try {
+                await prisma.$queryRaw`SELECT 1`;
+                console.log('✅ Database connection verified');
 
         // Check if TrackType table exists and seed if needed
         try {
@@ -1289,8 +1423,16 @@ app.listen(PORT, '0.0.0.0', async () => {
             console.log('⚠️  TrackType table not found, it will be created on next deploy with prisma db push');
             console.log('   Run "npx prisma db push" manually in production to create the table');
         }
+            } catch (error) {
+                console.error('⚠️  Database connection failed:', error.message);
+                console.error('Server is running but database queries will fail');
+            }
+        });
     } catch (error) {
-        console.error('⚠️  Database connection failed:', error.message);
-        console.error('Server is running but database queries will fail');
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
     }
-});
+}
+
+// Start the server
+startServer();
