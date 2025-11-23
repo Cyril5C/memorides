@@ -1043,6 +1043,190 @@ app.get('/api/export/backup', async (req, res) => {
     }
 });
 
+// Human-readable export - organized by tracks with photos
+app.get('/api/export/organized', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString().split('T')[0];
+        const zipFilename = `memorides-export-${timestamp}.zip`;
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+
+        const archive = archiver('zip', {
+            zlib: { level: 9 }
+        });
+
+        archive.on('error', (err) => {
+            console.error('Archive error:', err);
+            res.status(500).send('Error creating export');
+        });
+
+        archive.pipe(res);
+
+        // Get all tracks with their photos
+        const tracks = await prisma.track.findMany({
+            include: {
+                photos: true,
+                labels: {
+                    include: {
+                        label: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Create a directory for each track
+        for (const track of tracks) {
+            // Sanitize track name for folder name
+            const trackName = (track.name || track.title || track.filename.replace('.gpx', ''))
+                .replace(/[/\\:*?"<>|]/g, '_')
+                .substring(0, 100); // Limit length
+
+            const trackFolder = `traces/${trackName}`;
+
+            // Add GPX file
+            const gpxPath = path.join(gpxDir, track.filename);
+            if (fs.existsSync(gpxPath)) {
+                archive.file(gpxPath, { name: `${trackFolder}/trace.gpx` });
+            }
+
+            // Add track info as README
+            const trackInfo = [
+                `# ${track.name || track.title || 'Sans titre'}`,
+                '',
+                `**Type:** ${track.type || 'Non défini'}`,
+                `**Direction:** ${track.direction || 'Non défini'}`,
+                `**Distance:** ${track.distance ? (track.distance / 1000).toFixed(2) + ' km' : 'Non calculé'}`,
+                `**Dénivelé:** ${track.elevation ? track.elevation.toFixed(0) + ' m' : 'Non calculé'}`,
+                `**Durée:** ${track.duration ? (track.duration / 60).toFixed(0) + ' min' : 'Non calculé'}`,
+                `**Complétée:** ${track.completedAt ? new Date(track.completedAt).toLocaleDateString('fr-FR') : 'Non'}`,
+                '',
+                track.labels.length > 0 ? `**Libellés:** ${track.labels.map(l => l.label.name).join(', ')}` : '',
+                '',
+                track.comments ? `## Commentaires\n\n${track.comments}` : '',
+                '',
+                `---`,
+                `*Créé le ${new Date(track.createdAt).toLocaleDateString('fr-FR')}*`
+            ].filter(line => line !== '').join('\n');
+
+            archive.append(trackInfo, { name: `${trackFolder}/README.md` });
+
+            // Add photos
+            if (track.photos && track.photos.length > 0) {
+                for (let i = 0; i < track.photos.length; i++) {
+                    const photo = track.photos[i];
+                    const photoPath = path.join(__dirname, photo.path);
+                    if (fs.existsSync(photoPath)) {
+                        const ext = path.extname(photo.filename);
+                        const photoName = `photo-${String(i + 1).padStart(2, '0')}${ext}`;
+                        archive.file(photoPath, { name: `${trackFolder}/photos/${photoName}` });
+                    }
+                }
+            }
+        }
+
+        // Add database exports as CSV
+        const tracksCSV = [
+            'ID,Filename,Name,Title,Type,Direction,Color,Distance(m),Elevation(m),Duration(min),CompletedAt,Comments,Labels,CreatedAt,UpdatedAt',
+            ...tracks.map(t => [
+                t.id,
+                `"${t.filename}"`,
+                `"${t.name || ''}"`,
+                `"${t.title || ''}"`,
+                t.type || '',
+                t.direction || '',
+                t.color || '',
+                t.distance || '',
+                t.elevation || '',
+                t.duration || '',
+                t.completedAt ? new Date(t.completedAt).toISOString() : '',
+                `"${(t.comments || '').replace(/"/g, '""')}"`,
+                `"${t.labels.map(l => l.label.name).join(', ')}"`,
+                new Date(t.createdAt).toISOString(),
+                new Date(t.updatedAt).toISOString()
+            ].join(','))
+        ].join('\n');
+
+        archive.append(tracksCSV, { name: 'database/tracks.csv' });
+
+        // Labels CSV
+        const labels = await prisma.label.findMany({
+            orderBy: { name: 'asc' }
+        });
+
+        const labelsCSV = [
+            'ID,Name,CreatedAt',
+            ...labels.map(l => [
+                l.id,
+                `"${l.name}"`,
+                new Date(l.createdAt).toISOString()
+            ].join(','))
+        ].join('\n');
+
+        archive.append(labelsCSV, { name: 'database/labels.csv' });
+
+        // Photos CSV
+        const allPhotos = await prisma.photo.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const photosCSV = [
+            'ID,Filename,Name,Path,Latitude,Longitude,TrackID,CreatedAt',
+            ...allPhotos.map(p => [
+                p.id,
+                `"${p.filename}"`,
+                `"${p.name}"`,
+                `"${p.path}"`,
+                p.latitude,
+                p.longitude,
+                p.trackId || '',
+                new Date(p.createdAt).toISOString()
+            ].join(','))
+        ].join('\n');
+
+        archive.append(photosCSV, { name: 'database/photos.csv' });
+
+        // Add a main README
+        const mainReadme = [
+            '# Memorides Export',
+            '',
+            `Export créé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
+            '',
+            '## Structure',
+            '',
+            '- **traces/** : Un dossier par trace contenant :',
+            '  - `trace.gpx` : Le fichier GPX de la trace',
+            '  - `README.md` : Informations détaillées sur la trace',
+            '  - `photos/` : Photos associées à la trace (si présentes)',
+            '',
+            '- **database/** : Exports CSV de la base de données :',
+            '  - `tracks.csv` : Liste de toutes les traces',
+            '  - `photos.csv` : Liste de toutes les photos',
+            '  - `labels.csv` : Liste des libellés',
+            '',
+            `## Statistiques`,
+            '',
+            `- **${tracks.length}** traces`,
+            `- **${allPhotos.length}** photos`,
+            `- **${labels.length}** libellés`,
+            '',
+            '---',
+            '*Généré par Memorides - https://github.com/Cyril5C/memorides*'
+        ].join('\n');
+
+        archive.append(mainReadme, { name: 'README.md' });
+
+        // Finalize
+        await archive.finalize();
+
+        console.log(`📦 Organized export created: ${zipFilename}`);
+    } catch (error) {
+        console.error('Error creating organized export:', error);
+        res.status(500).json({ error: 'Failed to create export' });
+    }
+});
+
 // Admin endpoint to cleanup orphaned tracks
 app.post('/api/admin/cleanup-orphaned-tracks', async (req, res) => {
     try {

@@ -2584,7 +2584,7 @@ async function exportAllData() {
     try {
         showToast('📦', 'Export en cours...', 'Préparation du fichier ZIP', 3000);
 
-        const response = await fetch(`${API_BASE_URL}/export/backup`);
+        const response = await fetch(`${API_BASE_URL}/export/organized`);
 
         if (!response.ok) {
             throw new Error('Erreur lors de l\'export');
