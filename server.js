@@ -53,6 +53,9 @@ const uploadLimiter = rateLimit({
 });
 
 // Middleware
+// Trust proxy - Required for Railway/reverse proxies to get real client IP
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet({
     contentSecurityPolicy: {
