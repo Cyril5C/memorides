@@ -173,8 +173,56 @@ function attachEventListeners() {
         }
     });
 
-    // Logout Button
-    document.getElementById('logoutButton').addEventListener('click', async () => {
+    // Hamburger Menu
+    const hamburgerButton = document.getElementById('hamburgerButton');
+    const menuOverlay = document.getElementById('menuOverlay');
+    const closeMenu = document.getElementById('closeMenu');
+
+    function openMenu() {
+        menuOverlay.classList.remove('hidden');
+        hamburgerButton.classList.add('active');
+    }
+
+    function closeMenuFunc() {
+        menuOverlay.classList.add('hidden');
+        hamburgerButton.classList.remove('active');
+    }
+
+    hamburgerButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (menuOverlay.classList.contains('hidden')) {
+            openMenu();
+        } else {
+            closeMenuFunc();
+        }
+    });
+
+    closeMenu.addEventListener('click', closeMenuFunc);
+
+    // Close menu when clicking outside
+    menuOverlay.addEventListener('click', (e) => {
+        if (e.target === menuOverlay) {
+            closeMenuFunc();
+        }
+    });
+
+    // Menu Settings
+    document.getElementById('menuSettings').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeMenuFunc();
+        showLabelsManagementModal();
+    });
+
+    // Menu Export All
+    document.getElementById('menuExportAll').addEventListener('click', async (e) => {
+        e.preventDefault();
+        closeMenuFunc();
+        await exportAllData();
+    });
+
+    // Menu Logout
+    document.getElementById('menuLogout').addEventListener('click', async (e) => {
+        e.preventDefault();
         if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
             try {
                 const response = await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -2528,6 +2576,49 @@ async function deleteLabel(labelId, labelName) {
     } catch (error) {
         console.error('Error deleting label:', error);
         showToast('❌', 'Erreur', 'Impossible de supprimer le libellé');
+    }
+}
+
+// Export All Data
+async function exportAllData() {
+    try {
+        showToast('📦', 'Export en cours...', 'Préparation du fichier ZIP', 3000);
+
+        const response = await fetch(`${API_BASE_URL}/export/backup`);
+
+        if (!response.ok) {
+            throw new Error('Erreur lors de l\'export');
+        }
+
+        // Get the blob from the response
+        const blob = await response.blob();
+
+        // Get filename from header or use default
+        const contentDisposition = response.headers.get('content-disposition');
+        let filename = 'memorides-backup.zip';
+        if (contentDisposition) {
+            const matches = /filename="([^"]+)"/.exec(contentDisposition);
+            if (matches && matches[1]) {
+                filename = matches[1];
+            }
+        }
+
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showToast('✅', 'Export réussi !', 'Le fichier ZIP a été téléchargé', 2000);
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        showToast('❌', 'Erreur', 'Impossible d\'exporter les données');
     }
 }
 
