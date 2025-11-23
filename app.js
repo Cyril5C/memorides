@@ -731,33 +731,6 @@ async function processAndUploadPhoto(file, index, total) {
     }
 }
 
-// Upload photos in parallel with concurrency limit
-async function uploadPhotosInBatches(files, concurrency = 3) {
-    const results = [];
-    const errors = [];
-
-    for (let i = 0; i < files.length; i += concurrency) {
-        const batch = files.slice(i, i + concurrency);
-        const batchPromises = batch.map((file, batchIndex) =>
-            processAndUploadPhoto(file, i + batchIndex, files.length)
-                .then(photo => ({ success: true, photo }))
-                .catch(error => ({ success: false, error: error.message, filename: file.name }))
-        );
-
-        const batchResults = await Promise.all(batchPromises);
-
-        batchResults.forEach(result => {
-            if (result.success) {
-                results.push(result.photo);
-            } else {
-                errors.push(result);
-            }
-        });
-    }
-
-    return { results, errors };
-}
-
 // Handle Photo Upload
 async function handlePhotoUpload(event) {
     const files = Array.from(event.target.files);
@@ -782,24 +755,50 @@ async function handlePhotoUpload(event) {
     console.log(`\n📤 Starting upload of ${files.length} photo(s)...`);
     const startTime = Date.now();
 
-    // Show progress indicator
-    const uploadModal = document.getElementById('uploadModal');
-    const originalContent = uploadModal.innerHTML;
-    uploadModal.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div style="font-size: 48px; margin-bottom: 20px;">📸</div>
-            <div style="font-size: 18px; margin-bottom: 10px;">Upload en cours...</div>
-            <div style="font-size: 14px; color: var(--text-secondary);">
-                Traitement de ${files.length} photo(s)
+    // Create and show progress toast
+    const progressToast = document.createElement('div');
+    progressToast.id = 'uploadProgressToast';
+    progressToast.innerHTML = `
+        <div style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: white; padding: 20px 30px; border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 10000; min-width: 250px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 10px;">📸</div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Upload en cours...</div>
+            <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 15px;">
+                <span id="uploadProgress">0</span>/${files.length} photo(s)
             </div>
-            <div style="margin-top: 20px;">
-                <div class="spinner"></div>
-            </div>
+            <div class="spinner"></div>
         </div>
     `;
+    document.body.appendChild(progressToast);
 
-    // Upload photos in batches
-    const { results, errors } = await uploadPhotosInBatches(files, 3);
+    // Upload photos in batches with progress update
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < files.length; i += 3) {
+        const batch = files.slice(i, i + 3);
+        const batchPromises = batch.map((file, batchIndex) =>
+            processAndUploadPhoto(file, i + batchIndex, files.length)
+                .then(photo => {
+                    // Update progress
+                    const progressEl = document.getElementById('uploadProgress');
+                    if (progressEl) {
+                        progressEl.textContent = results.length + 1;
+                    }
+                    return { success: true, photo };
+                })
+                .catch(error => ({ success: false, error: error.message, filename: file.name }))
+        );
+
+        const batchResults = await Promise.all(batchPromises);
+
+        batchResults.forEach(result => {
+            if (result.success) {
+                results.push(result.photo);
+            } else {
+                errors.push(result);
+            }
+        });
+    }
 
     // Add successful uploads to state and map
     results.forEach(photo => {
@@ -812,25 +811,35 @@ async function handlePhotoUpload(event) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`\n✅ Upload completed in ${duration}s: ${results.length} succeeded, ${errors.length} failed`);
 
-    // Show results
+    // Update toast with results
     if (errors.length > 0) {
-        const errorMessages = errors.map(e => `- ${e.filename}: ${e.error}`).join('\n');
-        alert(`${results.length} photo(s) uploadée(s) avec succès.\n\n${errors.length} erreur(s):\n${errorMessages}`);
-    } else {
-        // Success message
-        uploadModal.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
-                <div style="font-size: 18px; margin-bottom: 10px;">Upload terminé !</div>
+        progressToast.innerHTML = `
+            <div style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: white; padding: 20px 30px; border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 10000; min-width: 250px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 10px;">⚠️</div>
+                <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Upload partiel</div>
                 <div style="font-size: 14px; color: var(--text-secondary);">
-                    ${results.length} photo(s) ajoutée(s) en ${duration}s
+                    ${results.length} réussie(s), ${errors.length} erreur(s)
                 </div>
             </div>
         `;
         setTimeout(() => {
-            uploadModal.classList.add('hidden');
-            uploadModal.innerHTML = originalContent;
+            progressToast.remove();
+            const errorMessages = errors.map(e => `• ${e.filename}: ${e.error}`).join('\n');
+            alert(`${results.length} photo(s) uploadée(s).\n\n${errors.length} erreur(s):\n${errorMessages}`);
         }, 1500);
+    } else {
+        progressToast.innerHTML = `
+            <div style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: white; padding: 20px 30px; border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 10000; min-width: 250px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
+                <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Upload terminé !</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    ${results.length} photo(s) en ${duration}s
+                </div>
+            </div>
+        `;
+        setTimeout(() => {
+            progressToast.remove();
+        }, 2000);
     }
 
     event.target.value = '';
