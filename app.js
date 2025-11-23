@@ -673,75 +673,150 @@ async function compressImage(file, maxSizeMB = 1) {
     });
 }
 
+// Process and upload a single photo
+async function processAndUploadPhoto(file, index, total) {
+    try {
+        console.log(`📸 [${index + 1}/${total}] Processing: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+
+        // Extract EXIF data first (before compression)
+        let gpsData = await extractGPSData(file);
+
+        // If no GPS data, use the end point of the current viewing track
+        if (!gpsData) {
+            if (currentViewingTrack && currentViewingTrack.points && currentViewingTrack.points.length > 0) {
+                const lastPoint = currentViewingTrack.points[currentViewingTrack.points.length - 1];
+                gpsData = {
+                    latitude: lastPoint.lat,
+                    longitude: lastPoint.lon
+                };
+                console.log(`⚠️  No GPS data in photo, using track end point`);
+            } else {
+                throw new Error('No GPS data and no track selected');
+            }
+        }
+
+        // Compress image if larger than 1MB
+        let uploadFile = file;
+        if (file.size > 1024 * 1024) {
+            console.log('🗜️  Compressing...');
+            uploadFile = await compressImage(file);
+        }
+
+        // Upload file with metadata to server
+        const formData = new FormData();
+        formData.append('photo', uploadFile);
+        formData.append('name', file.name);
+        formData.append('latitude', gpsData.latitude.toString());
+        formData.append('longitude', gpsData.longitude.toString());
+        if (currentViewingTrack) {
+            formData.append('trackId', currentViewingTrack.id);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/photos/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.photo) {
+            console.log(`✅ [${index + 1}/${total}] Uploaded: ${file.name}`);
+            return result.photo;
+        } else {
+            throw new Error(result.error || 'Upload failed');
+        }
+    } catch (error) {
+        console.error(`❌ [${index + 1}/${total}] Failed: ${file.name}`, error.message);
+        throw error;
+    }
+}
+
+// Upload photos in parallel with concurrency limit
+async function uploadPhotosInBatches(files, concurrency = 3) {
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < files.length; i += concurrency) {
+        const batch = files.slice(i, i + concurrency);
+        const batchPromises = batch.map((file, batchIndex) =>
+            processAndUploadPhoto(file, i + batchIndex, files.length)
+                .then(photo => ({ success: true, photo }))
+                .catch(error => ({ success: false, error: error.message, filename: file.name }))
+        );
+
+        const batchResults = await Promise.all(batchPromises);
+
+        batchResults.forEach(result => {
+            if (result.success) {
+                results.push(result.photo);
+            } else {
+                errors.push(result);
+            }
+        });
+    }
+
+    return { results, errors };
+}
+
 // Handle Photo Upload
 async function handlePhotoUpload(event) {
     const files = Array.from(event.target.files);
 
-    for (const file of files) {
-        try {
-            console.log(`📸 Processing photo: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    if (files.length === 0) return;
 
-            // Extract EXIF data first (before compression)
-            let gpsData = await extractGPSData(file);
+    console.log(`\n📤 Starting upload of ${files.length} photo(s)...`);
+    const startTime = Date.now();
 
-            // If no GPS data, use the end point of the current viewing track
-            if (!gpsData) {
-                if (currentViewingTrack && currentViewingTrack.points && currentViewingTrack.points.length > 0) {
-                    const lastPoint = currentViewingTrack.points[currentViewingTrack.points.length - 1];
-                    gpsData = {
-                        latitude: lastPoint.lat,
-                        longitude: lastPoint.lon
-                    };
-                    console.log(`⚠️  No GPS data in photo, using track end point: ${gpsData.latitude}, ${gpsData.longitude}`);
-                } else {
-                    alert(`La photo ${file.name} ne contient pas de données GPS et aucune trace n'est sélectionnée`);
-                    continue;
-                }
-            }
+    // Show progress indicator
+    const uploadModal = document.getElementById('uploadModal');
+    const originalContent = uploadModal.innerHTML;
+    uploadModal.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 20px;">📸</div>
+            <div style="font-size: 18px; margin-bottom: 10px;">Upload en cours...</div>
+            <div style="font-size: 14px; color: var(--text-secondary);">
+                Traitement de ${files.length} photo(s)
+            </div>
+            <div style="margin-top: 20px;">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    `;
 
-            // Compress image if larger than 1MB
-            let uploadFile = file;
-            if (file.size > 1024 * 1024) {
-                console.log('🗜️  Compressing image...');
-                uploadFile = await compressImage(file);
-            } else {
-                console.log('✅ Image already under 1MB, no compression needed');
-            }
+    // Upload photos in batches
+    const { results, errors } = await uploadPhotosInBatches(files, 3);
 
-            // Upload file with metadata to server
-            const formData = new FormData();
-            formData.append('photo', uploadFile);
-            formData.append('name', file.name);
-            formData.append('latitude', gpsData.latitude.toString());
-            formData.append('longitude', gpsData.longitude.toString());
-            // Associate photo with current track if one is selected
-            if (currentViewingTrack) {
-                formData.append('trackId', currentViewingTrack.id);
-            }
-
-            const response = await fetch(`${API_BASE_URL}/photos/upload`, {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success && result.photo) {
-                state.photos.push(result.photo);
-                addPhotoToMap(result.photo);
-            } else {
-                alert('Erreur lors de l\'upload de la photo');
-            }
-        } catch (error) {
-            console.error('Error uploading photo:', error);
-            alert('Erreur lors de l\'upload de la photo');
-        }
-    }
+    // Add successful uploads to state and map
+    results.forEach(photo => {
+        state.photos.push(photo);
+        addPhotoToMap(photo);
+    });
 
     renderPhotos();
 
-    // Close upload modal if open
-    document.getElementById('uploadModal').classList.add('hidden');
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n✅ Upload completed in ${duration}s: ${results.length} succeeded, ${errors.length} failed`);
+
+    // Show results
+    if (errors.length > 0) {
+        const errorMessages = errors.map(e => `- ${e.filename}: ${e.error}`).join('\n');
+        alert(`${results.length} photo(s) uploadée(s) avec succès.\n\n${errors.length} erreur(s):\n${errorMessages}`);
+    } else {
+        // Success message
+        uploadModal.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+                <div style="font-size: 18px; margin-bottom: 10px;">Upload terminé !</div>
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    ${results.length} photo(s) ajoutée(s) en ${duration}s
+                </div>
+            </div>
+        `;
+        setTimeout(() => {
+            uploadModal.classList.add('hidden');
+            uploadModal.innerHTML = originalContent;
+        }, 1500);
+    }
 
     event.target.value = '';
 }
