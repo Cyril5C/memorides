@@ -8,6 +8,27 @@ const BASE_URL = window.location.hostname === 'localhost' || window.location.hos
     ? 'http://localhost:8080'
     : `${window.location.protocol}//${window.location.host}`;
 
+// Toast notification helper
+function showToast(icon, title, message, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.innerHTML = `
+        <div style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: white; padding: 20px 30px; border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 10000; min-width: 250px; text-align: center; animation: slideDown 0.3s ease-out;">
+            <div style="font-size: 32px; margin-bottom: 10px;">${icon}</div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">${title}</div>
+            ${message ? `<div style="font-size: 14px; color: var(--text-secondary);">${message}</div>` : ''}
+        </div>
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+
+    return toast;
+}
+
 // Application State
 const state = {
     map: null,
@@ -997,15 +1018,11 @@ window.expandTrackPhoto = function(photoId, trackId) {
 async function handlePhotoDelete() {
     if (!currentPhotoId) return;
 
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
-        return;
-    }
-
     try {
         // Find the photo to get its filename
         const photo = state.photos.find(p => p.id === currentPhotoId);
         if (!photo) {
-            alert('Photo introuvable');
+            showToast('❌', 'Erreur', 'Photo introuvable');
             return;
         }
 
@@ -1030,13 +1047,13 @@ async function handlePhotoDelete() {
             document.getElementById('photoModal').classList.add('hidden');
             currentPhotoId = null;
 
-            alert('Photo supprimée avec succès');
+            showToast('🗑️', 'Photo supprimée', null, 1500);
         } else {
-            alert('Erreur lors de la suppression de la photo');
+            showToast('❌', 'Erreur', 'Impossible de supprimer la photo');
         }
     } catch (error) {
         console.error('Error deleting photo:', error);
-        alert('Erreur lors de la suppression de la photo');
+        showToast('❌', 'Erreur', 'Impossible de supprimer la photo');
     }
 }
 
@@ -1392,81 +1409,83 @@ async function changeTrackColor(trackId, newColor) {
 
 // Delete track
 async function deleteTrack(trackId) {
-    if (confirm('Voulez-vous vraiment supprimer cette trace ?')) {
-        const track = state.tracks.find(t => t.id.toString() === trackId.toString());
+    const track = state.tracks.find(t => t.id.toString() === trackId.toString());
+    if (!track) return;
 
-        if (track) {
-            try {
-                // Delete from server - encode filename for special characters
-                if (track.filename) {
-                    const encodedFilename = encodeURIComponent(track.filename);
-                    await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
-                        method: 'DELETE'
-                    });
-                }
-
-                // Remove from map
-                if (state.layers.tracks[track.id]) {
-                    state.map.removeLayer(state.layers.tracks[track.id]);
-                    delete state.layers.tracks[track.id];
-                }
-
-                // Remove from state
-                state.tracks = state.tracks.filter(t => t.id.toString() !== trackId.toString());
-
-
-                renderTracks();
-            } catch (error) {
-                console.error('Error deleting track:', error);
-                alert('Erreur lors de la suppression de la trace');
-            }
+    try {
+        // Delete from server - encode filename for special characters
+        if (track.filename) {
+            const encodedFilename = encodeURIComponent(track.filename);
+            await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
+                method: 'DELETE'
+            });
         }
+
+        // Remove from map
+        if (state.layers.tracks[track.id]) {
+            state.map.removeLayer(state.layers.tracks[track.id]);
+            delete state.layers.tracks[track.id];
+        }
+
+        // Remove from state
+        state.tracks = state.tracks.filter(t => t.id.toString() !== trackId.toString());
+
+        renderTracks();
+
+        // Show success toast
+        showToast('🗑️', 'Trace supprimée', track.title || track.name);
+    } catch (error) {
+        console.error('Error deleting track:', error);
+        showToast('❌', 'Erreur', 'Impossible de supprimer la trace');
     }
 }
 
 
 // Clear all data
 async function handleClearAll() {
-    if (confirm('Voulez-vous vraiment effacer toutes les traces et photos ?')) {
-        try {
-            // Delete all tracks from server
-            for (const track of state.tracks) {
-                if (track.filename) {
-                    const encodedFilename = encodeURIComponent(track.filename);
-                    await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
-                        method: 'DELETE'
-                    });
-                }
+    try {
+        const trackCount = state.tracks.length;
+        const photoCount = state.photos.length;
+
+        // Delete all tracks from server
+        for (const track of state.tracks) {
+            if (track.filename) {
+                const encodedFilename = encodeURIComponent(track.filename);
+                await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
+                    method: 'DELETE'
+                });
             }
-
-            // Delete all photos from server
-            for (const photo of state.photos) {
-                if (photo.filename) {
-                    await fetch(`${API_BASE_URL}/photos/${photo.filename}`, {
-                        method: 'DELETE'
-                    });
-                }
-            }
-
-            // Remove all layers
-            Object.values(state.layers.tracks).forEach(layer => {
-                state.map.removeLayer(layer);
-            });
-            state.layers.photos.clearLayers();
-
-            // Clear state
-            state.tracks = [];
-            state.photos = [];
-            state.layers.tracks = {};
-
-            renderTracks();
-            renderPhotos();
-
-            document.getElementById('trackInfo').classList.add('hidden');
-        } catch (error) {
-            console.error('Error clearing all data:', error);
-            alert('Erreur lors de la suppression des données');
         }
+
+        // Delete all photos from server
+        for (const photo of state.photos) {
+            if (photo.filename) {
+                await fetch(`${API_BASE_URL}/photos/${photo.filename}`, {
+                    method: 'DELETE'
+                });
+            }
+        }
+
+        // Remove all layers
+        Object.values(state.layers.tracks).forEach(layer => {
+            state.map.removeLayer(layer);
+        });
+        state.layers.photos.clearLayers();
+
+        // Clear state
+        state.tracks = [];
+        state.photos = [];
+        state.layers.tracks = {};
+
+        renderTracks();
+        renderPhotos();
+
+        document.getElementById('trackInfo').classList.add('hidden');
+
+        showToast('🗑️', 'Données supprimées', `${trackCount} traces et ${photoCount} photos`);
+    } catch (error) {
+        console.error('Error clearing all data:', error);
+        showToast('❌', 'Erreur', 'Impossible de supprimer les données');
     }
 }
 
@@ -1759,7 +1778,7 @@ function displayTrackPhotos(track) {
     container.innerHTML = track.photos.map(photo => `
         <div class="track-photo-item">
             <img src="${BASE_URL}${photo.path}" alt="${photo.name}" data-photo='${JSON.stringify(photo)}'>
-            <button class="delete-photo" data-photo-id="${photo.id}" title="Supprimer">×</button>
+            <button type="button" class="delete-photo" data-photo-id="${photo.id}" title="Supprimer">×</button>
         </div>
     `).join('');
 
@@ -1945,18 +1964,6 @@ async function handleTrackDelete() {
     const track = state.tracks.find(t => t.id.toString() === currentEditingTrackId.toString());
     if (!track) return;
 
-    // Confirm deletion
-    const confirmed = confirm(
-        `Êtes-vous sûr de vouloir supprimer la trace "${track.title || track.name}" ?\n\n` +
-        `Cela supprimera :\n` +
-        `- Le fichier GPX\n` +
-        `- Toutes les données de la base de données\n` +
-        `- Toutes les photos associées\n\n` +
-        `Cette action est irréversible.`
-    );
-
-    if (!confirmed) return;
-
     try {
         const encodedFilename = encodeURIComponent(track.filename);
         const response = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`, {
@@ -1984,20 +1991,20 @@ async function handleTrackDelete() {
             // Close modal
             closeTrackEditModal();
 
-            alert('Trace supprimée avec succès !');
+            showToast('🗑️', 'Trace supprimée', track.title || track.name);
         } else {
-            alert('Erreur lors de la suppression de la trace');
+            showToast('❌', 'Erreur', 'Impossible de supprimer la trace');
         }
     } catch (error) {
         console.error('Error deleting track:', error);
-        alert('Erreur lors de la suppression de la trace');
+        showToast('❌', 'Erreur', 'Impossible de supprimer la trace');
     }
 }
 
 // Handle adding photos to a track
 async function handleAddTrackPhotos(event) {
     if (!currentEditingTrackId) {
-        alert('Erreur: Aucune trace sélectionnée');
+        showToast('❌', 'Erreur', 'Aucune trace sélectionnée');
         return;
     }
 
@@ -2006,19 +2013,67 @@ async function handleAddTrackPhotos(event) {
 
     if (!track) return;
 
-    for (const file of files) {
-        try {
-            // Extract GPS data from photo
-            const gpsData = await extractGPSData(file);
+    // Check for HEIC files
+    const heicFiles = files.filter(f =>
+        f.name.toLowerCase().endsWith('.heic') ||
+        f.name.toLowerCase().endsWith('.heif') ||
+        f.type === 'image/heic' ||
+        f.type === 'image/heif'
+    );
 
+    if (heicFiles.length > 0) {
+        const fileList = heicFiles.map(f => `• ${f.name}`).join('\n');
+        alert(`❌ Format HEIC non supporté\n\n${heicFiles.length} photo(s) au format HEIC détectée(s):\n${fileList}\n\nSur iOS:\n1. Réglages → Appareil photo → Formats\n2. Sélectionnez "Le plus compatible"\n\nOu utilisez l'app Photos pour partager en JPEG.`);
+        event.target.value = '';
+        return;
+    }
+
+    // Create progress toast
+    const progressToastDiv = document.createElement('div');
+    progressToastDiv.innerHTML = `
+        <div style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+             background: white; padding: 20px 30px; border-radius: 12px;
+             box-shadow: var(--shadow-lg); z-index: 10000; min-width: 300px;
+             text-align: center;">
+            <div class="spinner" style="margin: 0 auto 15px;"></div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Upload en cours...</div>
+            <div style="font-size: 14px; color: var(--text-secondary);">
+                <span id="uploadProgress">0</span> / ${files.length} photo(s)
+            </div>
+        </div>
+    `;
+    document.body.appendChild(progressToastDiv);
+
+    const results = [];
+    const errors = [];
+
+    // Helper function to process and upload a single photo
+    const processAndUploadTrackPhoto = async (file) => {
+        try {
+            // Extract GPS data from ORIGINAL photo BEFORE compression (compression removes EXIF data)
+            let gpsData = await extractGPSData(file);
+
+            // Fallback: use track end point if no GPS data
             if (!gpsData) {
-                alert(`La photo ${file.name} ne contient pas de données GPS`);
-                continue;
+                if (track && track.points && track.points.length > 0) {
+                    const lastPoint = track.points[track.points.length - 1];
+                    gpsData = {
+                        latitude: lastPoint.lat,
+                        longitude: lastPoint.lon
+                    };
+                    console.log(`📍 No GPS in ${file.name}, using track end point:`, gpsData);
+                } else {
+                    errors.push(`${file.name}: Pas de données GPS`);
+                    return null;
+                }
             }
+
+            // Now compress image for upload
+            const compressedFile = await compressImage(file);
 
             // Upload photo with trackId
             const formData = new FormData();
-            formData.append('photo', file);
+            formData.append('photo', compressedFile);
             formData.append('name', file.name);
             formData.append('latitude', gpsData.latitude.toString());
             formData.append('longitude', gpsData.longitude.toString());
@@ -2043,19 +2098,53 @@ async function handleAddTrackPhotos(event) {
 
                 // Update photos list
                 state.photos.push(result.photo);
-                renderPhotos();
 
-                // Refresh track photos display
-                displayTrackPhotos(track);
-
-                alert(`Photo ${file.name} ajoutée avec succès !`);
+                return result.photo;
             } else {
-                alert(`Erreur lors de l'ajout de la photo ${file.name}`);
+                errors.push(`${file.name}: ${result.error || 'Erreur inconnue'}`);
+                return null;
             }
         } catch (error) {
             console.error('Error uploading photo:', error);
-            alert(`Erreur lors de l'ajout de la photo ${file.name}`);
+            errors.push(`${file.name}: ${error.message}`);
+            return null;
         }
+    };
+
+    // Upload in batches of 3
+    for (let i = 0; i < files.length; i += 3) {
+        const batch = files.slice(i, i + 3);
+        const batchPromises = batch.map((file, batchIndex) =>
+            processAndUploadTrackPhoto(file).then(photo => {
+                if (photo) {
+                    results.push(photo);
+                }
+                // Update progress counter
+                const progressEl = document.getElementById('uploadProgress');
+                if (progressEl) {
+                    progressEl.textContent = results.length + errors.length;
+                }
+                return photo;
+            })
+        );
+
+        await Promise.all(batchPromises);
+    }
+
+    // Remove progress toast
+    progressToastDiv.remove();
+
+    // Refresh track photos display
+    renderPhotos();
+    displayTrackPhotos(track);
+
+    // Show result toast
+    if (errors.length === 0) {
+        showToast('✅', 'Upload terminé', `${results.length} photo(s) ajoutée(s)`);
+    } else if (results.length > 0) {
+        showToast('⚠️', 'Upload partiel', `${results.length} photo(s) ajoutée(s), ${errors.length} erreur(s)`);
+    } else {
+        showToast('❌', 'Échec upload', `${errors.length} erreur(s)`);
     }
 
     // Reset input
@@ -2064,10 +2153,11 @@ async function handleAddTrackPhotos(event) {
 
 // Delete a photo from a track
 async function deleteTrackPhoto(photoId) {
-    if (!confirm('Supprimer cette photo ?')) return;
-
-    const photo = state.photos.find(p => p.id === photoId);
-    if (!photo) return;
+    const photo = state.photos.find(p => p.id.toString() === photoId.toString());
+    if (!photo) {
+        console.error('Photo not found:', photoId);
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE_URL}/photos/${photo.filename}`, {
@@ -2078,30 +2168,30 @@ async function deleteTrackPhoto(photoId) {
 
         if (result.success) {
             // Remove from state
-            state.photos = state.photos.filter(p => p.id !== photoId);
+            state.photos = state.photos.filter(p => p.id.toString() !== photoId.toString());
 
             // Remove from track
             const track = state.tracks.find(t => t.id.toString() === currentEditingTrackId.toString());
             if (track && track.photos) {
-                track.photos = track.photos.filter(p => p.id !== photoId);
+                track.photos = track.photos.filter(p => p.id.toString() !== photoId.toString());
                 displayTrackPhotos(track);
             }
 
             // Remove from map
             state.layers.photos.eachLayer(layer => {
-                if (layer.options && layer.options.photoId === photoId) {
+                if (layer.options && layer.options.photoId && layer.options.photoId.toString() === photoId.toString()) {
                     state.layers.photos.removeLayer(layer);
                 }
             });
 
             renderPhotos();
-            alert('Photo supprimée avec succès');
+            showToast('🗑️', 'Photo supprimée', null, 1500);
         } else {
-            alert('Erreur lors de la suppression de la photo');
+            showToast('❌', 'Erreur', 'Impossible de supprimer la photo');
         }
     } catch (error) {
         console.error('Error deleting photo:', error);
-        alert('Erreur lors de la suppression de la photo');
+        showToast('❌', 'Erreur', 'Impossible de supprimer la photo');
     }
 }
 
@@ -2315,10 +2405,6 @@ async function loadAndDisplayLabelsManagement() {
 
 // Delete a label
 async function deleteLabel(labelId, labelName) {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le libellé "${labelName}" ?\nIl sera retiré de toutes les traces associées.`)) {
-        return;
-    }
-
     try {
         const response = await fetch(`${API_BASE_URL}/labels/${labelId}`, {
             method: 'DELETE'
@@ -2340,12 +2426,14 @@ async function deleteLabel(labelId, labelName) {
             });
             state.layers.tracks = {};
             await loadTracksFromServer();
+
+            showToast('🗑️', 'Libellé supprimé', labelName);
         } else {
-            alert('Erreur lors de la suppression du libellé');
+            showToast('❌', 'Erreur', 'Impossible de supprimer le libellé');
         }
     } catch (error) {
         console.error('Error deleting label:', error);
-        alert('Erreur lors de la suppression du libellé');
+        showToast('❌', 'Erreur', 'Impossible de supprimer le libellé');
     }
 }
 

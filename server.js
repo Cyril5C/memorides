@@ -45,7 +45,7 @@ const generalLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // Limit each IP to 20 uploads per hour
+    max: process.env.NODE_ENV === 'production' ? 20 : 200, // More permissive in dev
     message: 'Trop d\'uploads, réessayez dans 1 heure',
     standardHeaders: true,
     legacyHeaders: false
