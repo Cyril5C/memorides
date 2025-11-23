@@ -682,11 +682,21 @@ async function handlePhotoUpload(event) {
             console.log(`📸 Processing photo: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
             // Extract EXIF data first (before compression)
-            const gpsData = await extractGPSData(file);
+            let gpsData = await extractGPSData(file);
 
+            // If no GPS data, use the end point of the current viewing track
             if (!gpsData) {
-                alert(`La photo ${file.name} ne contient pas de données GPS`);
-                continue;
+                if (currentViewingTrack && currentViewingTrack.points && currentViewingTrack.points.length > 0) {
+                    const lastPoint = currentViewingTrack.points[currentViewingTrack.points.length - 1];
+                    gpsData = {
+                        latitude: lastPoint.lat,
+                        longitude: lastPoint.lon
+                    };
+                    console.log(`⚠️  No GPS data in photo, using track end point: ${gpsData.latitude}, ${gpsData.longitude}`);
+                } else {
+                    alert(`La photo ${file.name} ne contient pas de données GPS et aucune trace n'est sélectionnée`);
+                    continue;
+                }
             }
 
             // Compress image if larger than 1MB
@@ -704,6 +714,10 @@ async function handlePhotoUpload(event) {
             formData.append('name', file.name);
             formData.append('latitude', gpsData.latitude.toString());
             formData.append('longitude', gpsData.longitude.toString());
+            // Associate photo with current track if one is selected
+            if (currentViewingTrack) {
+                formData.append('trackId', currentViewingTrack.id);
+            }
 
             const response = await fetch(`${API_BASE_URL}/photos/upload`, {
                 method: 'POST',
@@ -929,6 +943,9 @@ async function handlePhotoDelete() {
 
 // Show track info modal
 function showTrackInfoModal(track, isSharedLink = false) {
+    // Store current track for photo upload fallback
+    currentViewingTrack = track;
+
     const displayTitle = track.title || track.name;
     const typeIcon = getTypeIcon(track.type);
 
@@ -1561,6 +1578,7 @@ async function loadTrackTypesFromServer() {
 // Edit track - open modal
 let currentEditingTrackId = null;
 let currentTrackLabels = [];
+let currentViewingTrack = null; // Track currently displayed in info modal
 
 // Get all unique labels from database
 function getAllExistingLabels() {
