@@ -1073,6 +1073,35 @@ select {
     transform: scale(0.95);
 }
 
+/* Logout Button */
+.logout-btn {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 1000;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.logout-btn:active {
+    transform: scale(0.95);
+}
+
 /* Labels Management List */
 .labels-management-list {
     display: flex;

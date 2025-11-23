@@ -173,6 +173,26 @@ function attachEventListeners() {
         }
     });
 
+    // Logout Button
+    document.getElementById('logoutButton').addEventListener('click', async () => {
+        if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Erreur lors de la déconnexion:', error);
+            }
+        }
+    });
+
     // Labels Management Modal
     document.getElementById('settingsButton').addEventListener('click', showLabelsManagementModal);
     document.getElementById('closeLabelsManagementModal').addEventListener('click', closeLabelsManagementModal);

@@ -10,6 +10,7 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
 const archiver = require('archiver');
+const session = require('express-session');
 
 console.log('🔧 Initializing server...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
@@ -92,10 +93,71 @@ app.use(cors({
 // Compression
 app.use(compression());
 
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
 // Rate limiting on API routes
 app.use('/api', generalLimiter);
 
 app.use(express.json());
+
+// Authentication middleware
+function requireAuth(req, res, next) {
+    if (req.session && req.session.authenticated) {
+        return next();
+    }
+    // For API requests, return JSON error
+    if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+    // For page requests, redirect to login
+    res.redirect('/login');
+}
+
+// Login route (no auth required)
+app.post('/api/auth/login', (req, res) => {
+    const { password } = req.body;
+    const correctPassword = process.env.APP_PASSWORD || 'rides2024';
+
+    if (password === correctPassword) {
+        req.session.authenticated = true;
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, message: 'Mot de passe incorrect' });
+    }
+});
+
+// Logout route
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.json({ success: false, message: 'Erreur lors de la déconnexion' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Serve login page (no auth required)
+app.get('/login', (req, res) => {
+    // If already authenticated, redirect to home
+    if (req.session && req.session.authenticated) {
+        return res.redirect('/');
+    }
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Protect all other routes
+app.use(requireAuth);
+
 app.use(express.static('public'));
 
 // Service Worker must never be cached - serve with no-cache headers
