@@ -554,7 +554,7 @@ function addTrackToMap(track) {
             color: color,
             weight: 6, // Increased from 4 for better touch on mobile
             opacity: 0.7
-        }).addTo(state.map);
+        });
 
         // Add direction arrows along this segment
         const decorator = L.polylineDecorator(polyline, {
@@ -575,7 +575,7 @@ function addTrackToMap(track) {
                     })
                 }
             ]
-        }).addTo(state.map);
+        });
 
         // Add click handler to each segment
         polyline.on('click', () => {
@@ -602,7 +602,7 @@ function addTrackToMap(track) {
                 iconSize: [32, 32],
                 iconAnchor: [16, 16]
             })
-        }).addTo(state.map);
+        });
 
         startMarker.on('click', () => {
             showTrackInfoModal(track);
@@ -622,7 +622,7 @@ function addTrackToMap(track) {
                 iconSize: [32, 32],
                 iconAnchor: [16, 16]
             })
-        }).addTo(state.map);
+        });
 
         endMarker.on('click', () => {
             showTrackInfoModal(track);
@@ -631,8 +631,8 @@ function addTrackToMap(track) {
         layers.push(endMarker);
     }
 
-    // Store all polylines, decorators and markers in a layer group
-    const layerGroup = L.layerGroup(layers);
+    // Store all polylines, decorators and markers in a layer group and add to map
+    const layerGroup = L.layerGroup(layers).addTo(state.map);
     state.layers.tracks[track.id] = layerGroup;
 }
 
@@ -975,14 +975,14 @@ window.expandTrackPhoto = function(photoId, trackId) {
 
     // Show navigation buttons only if there are multiple photos
     const navigationButtons = trackPhotos.length > 1 ? `
-        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.3); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(8px);" title="Photo précédente">‹</button>
-        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.3); border: none; border-radius: 4px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(8px);" title="Photo suivante">›</button>
-        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.3); border-radius: 4px; padding: 8px 12px; font-size: 14px; z-index: 2001; color: white; backdrop-filter: blur(8px);">${currentIndex + 1} / ${trackPhotos.length}</div>
+        <button id="prevPhotoBtn" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Photo précédente">‹</button>
+        <button id="nextPhotoBtn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px 16px; cursor: pointer; font-size: 24px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Photo suivante">›</button>
+        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; font-size: 14px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">${currentIndex + 1} / ${trackPhotos.length}</div>
     ` : '';
 
     overlay.innerHTML = `
         <img id="expandedPhotoImg" src="${photoUrl}" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
-        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.3); border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001; color: white; backdrop-filter: blur(8px);" title="Fermer">✕</button>
+        <button id="closePhotoBtn" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 20px; z-index: 2001; color: white; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Fermer">✕</button>
         ${navigationButtons}
     `;
 
@@ -2223,14 +2223,45 @@ function switchView(view) {
 function renderListView() {
     const container = document.getElementById('tracksListDetailed');
 
-    // Filter and search tracks
+    // Filter tracks using the same filters as renderTracks()
     let filteredTracks = state.tracks.filter(track => {
-        const matchesFilter = state.currentFilter === 'all' || track.type === state.currentFilter;
-        const matchesSearch = !state.searchTerm ||
-            (track.title && track.title.toLowerCase().includes(state.searchTerm)) ||
-            track.name.toLowerCase().includes(state.searchTerm) ||
-            (track.comments && track.comments.toLowerCase().includes(state.searchTerm));
-        return matchesFilter && matchesSearch;
+        let shouldShow = true;
+
+        // Apply completion filter
+        if (state.filters.completion === 'completed' && !track.completedAt) {
+            shouldShow = false;
+        } else if (state.filters.completion === 'todo' && track.completedAt) {
+            shouldShow = false;
+        }
+
+        // Apply label filters (if any labels are selected)
+        if (shouldShow && state.filters.labels.length > 0) {
+            const trackLabelIds = track.labels ? track.labels.map(tl => tl.label.id) : [];
+            const hasMatchingLabel = state.filters.labels.some(labelId => trackLabelIds.includes(labelId));
+            if (!hasMatchingLabel) {
+                shouldShow = false;
+            }
+        }
+
+        // Apply type filter
+        if (shouldShow) {
+            const matchesFilter = state.currentFilter === 'all' || track.type === state.currentFilter;
+            if (!matchesFilter) {
+                shouldShow = false;
+            }
+        }
+
+        // Apply search filter
+        if (shouldShow && state.searchTerm) {
+            const matchesSearch = (track.title && track.title.toLowerCase().includes(state.searchTerm)) ||
+                track.name.toLowerCase().includes(state.searchTerm) ||
+                (track.comments && track.comments.toLowerCase().includes(state.searchTerm));
+            if (!matchesSearch) {
+                shouldShow = false;
+            }
+        }
+
+        return shouldShow;
     });
 
     if (filteredTracks.length === 0) {
@@ -2697,6 +2728,10 @@ async function applyFilters() {
         console.log('🎨 Display filter unchanged, just re-rendering...');
         // Just re-render with existing tracks
         renderTracks();
+        // Also update list view if currently active
+        if (state.currentView === 'list') {
+            renderListView();
+        }
     }
 
     closeFilterModal();
@@ -2734,6 +2769,10 @@ async function resetFilters() {
     } else {
         // Just re-render with existing tracks
         renderTracks();
+        // Also update list view if currently active
+        if (state.currentView === 'list') {
+            renderListView();
+        }
     }
 
     closeFilterModal();
