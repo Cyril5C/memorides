@@ -456,26 +456,6 @@ app.patch('/api/gpx/:filename', async (req, res) => {
 app.post('/api/photos/upload',
     uploadLimiter,
     upload.single('photo'),
-    body('name').optional().isString().trim().isLength({ max: 200 }),
-    body('latitude').notEmpty().isFloat({ min: -90, max: 90 }),
-    body('longitude').notEmpty().isFloat({ min: -180, max: 180 }),
-    body('trackId').optional().isInt(),
-    async (req, res, next) => {
-        // Validate after multer processes the file
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            // Delete uploaded file if validation fails
-            if (req.file) {
-                await fsPromises.unlink(req.file.path).catch(() => {});
-            }
-            return res.status(400).json({
-                success: false,
-                error: 'Validation failed',
-                details: errors.array()
-            });
-        }
-        next();
-    },
     async (req, res) => {
         try {
             if (!req.file) {
