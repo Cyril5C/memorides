@@ -78,7 +78,7 @@ function handleValidationErrors(req, res, next) {
 // Security: Rate limiters
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More permissive in dev
+    max: process.env.NODE_ENV === 'production' ? 500 : 1000, // Increased for loading many tracks
     message: 'Trop de requêtes, réessayez plus tard',
     standardHeaders: true,
     legacyHeaders: false
