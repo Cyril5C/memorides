@@ -28,5 +28,5 @@ RUN mkdir -p uploads/gpx uploads/photos
 # Expose port
 EXPOSE 8080
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application with migrations
+CMD ["sh", "start.sh"]
