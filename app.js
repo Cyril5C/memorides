@@ -928,10 +928,11 @@ async function handlePhotoUpload(event) {
         });
     }
 
-    // Add successful uploads to state and map
+    // Add successful uploads to state (but not to map - photos are only shown in track detail modal)
     results.forEach(photo => {
         state.photos.push(photo);
-        addPhotoToMap(photo);
+        // Don't add photos to main map
+        // addPhotoToMap(photo);
     });
 
     renderPhotos();
@@ -2311,8 +2312,8 @@ async function handleAddTrackPhotos(event) {
                 }
                 track.photos.push(result.photo);
 
-                // Add photo to map
-                addPhotoToMap(result.photo);
+                // Don't add photos to main map - they are only shown in track detail modal
+                // addPhotoToMap(result.photo);
 
                 // Update photos list
                 state.photos.push(result.photo);
