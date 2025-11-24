@@ -44,12 +44,39 @@ const state = {
     currentFilter: 'all',
     currentView: 'map',
     searchTerm: '',
-    filters: {
+    filters: loadFiltersFromStorage() // Load saved filters or use defaults
+};
+
+// Load filters from localStorage or use defaults
+function loadFiltersFromStorage() {
+    try {
+        const savedFilters = localStorage.getItem('memorides_filters');
+        if (savedFilters) {
+            const filters = JSON.parse(savedFilters);
+            console.log('📋 Loaded saved filters:', filters);
+            return filters;
+        }
+    } catch (error) {
+        console.error('Error loading filters from storage:', error);
+    }
+
+    // Default filters
+    return {
         display: 'recent', // 'recent', 'all'
         completion: 'all', // 'all', 'completed', 'todo'
         labels: [] // Array of selected label IDs
+    };
+}
+
+// Save filters to localStorage
+function saveFiltersToStorage() {
+    try {
+        localStorage.setItem('memorides_filters', JSON.stringify(state.filters));
+        console.log('💾 Saved filters to storage');
+    } catch (error) {
+        console.error('Error saving filters to storage:', error);
     }
-};
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2933,6 +2960,9 @@ async function applyFilters() {
         const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
         state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
 
+        // Save filters to localStorage
+        saveFiltersToStorage();
+
         console.log(`🔍 Filter change: ${previousDisplayFilter} -> ${displayFilter}`);
 
         // If display filter changed, reload tracks
@@ -2976,6 +3006,9 @@ async function resetFilters() {
     state.filters.display = 'recent';
     state.filters.completion = 'all';
     state.filters.labels = [];
+
+    // Save reset filters to localStorage
+    saveFiltersToStorage();
 
     document.querySelector('input[name="displayFilter"][value="recent"]').checked = true;
     document.querySelector('input[name="completionFilter"][value="all"]').checked = true;
