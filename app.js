@@ -1772,16 +1772,33 @@ async function loadTracksFromServer(retryCount = 0) {
         console.log('Tracks loaded:', result);
 
         if (result.success && result.tracks && result.tracks.length > 0) {
-            // If in "recent" mode, only load the 3 most recent tracks
+            // Apply filters to determine which tracks to load
             let tracksToLoad = result.tracks;
+
+            // First, apply completion and label filters
+            if (state.filters.completion === 'completed') {
+                tracksToLoad = tracksToLoad.filter(track => track.completedAt);
+            } else if (state.filters.completion === 'todo') {
+                tracksToLoad = tracksToLoad.filter(track => !track.completedAt);
+            }
+
+            // Apply label filters
+            if (state.filters.labels.length > 0) {
+                tracksToLoad = tracksToLoad.filter(track => {
+                    const trackLabelIds = track.labels ? track.labels.map(tl => tl.label.id) : [];
+                    return state.filters.labels.some(labelId => trackLabelIds.includes(labelId));
+                });
+            }
+
+            // Then apply display filter (recent = only 3 most recent)
             if (state.filters.display === 'recent') {
                 // Sort by createdAt descending and take first 3
-                tracksToLoad = [...result.tracks]
+                tracksToLoad = [...tracksToLoad]
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .slice(0, 3);
                 console.log(`📍 Loading ${tracksToLoad.length} recent tracks (out of ${result.tracks.length} total)...`);
             } else {
-                console.log(`📍 Loading ${result.tracks.length} tracks from database...`);
+                console.log(`📍 Loading ${tracksToLoad.length} tracks from database (filtered from ${result.tracks.length} total)...`);
             }
 
             const totalTracks = tracksToLoad.length;
