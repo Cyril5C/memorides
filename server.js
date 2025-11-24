@@ -86,7 +86,7 @@ const generalLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: process.env.NODE_ENV === 'production' ? 20 : 200, // More permissive in dev
+    max: process.env.NODE_ENV === 'production' ? 100 : 200, // Increased for batch photo uploads
     message: 'Trop d\'uploads, réessayez dans 1 heure',
     standardHeaders: true,
     legacyHeaders: false
