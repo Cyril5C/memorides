@@ -1724,6 +1724,8 @@ function showLoadingOverlay() {
     if (overlay) {
         overlay.classList.remove('hidden');
     }
+    // Reset counter
+    updateLoadingCounter(0, 0);
 }
 
 // Hide loading overlay
@@ -1731,6 +1733,17 @@ function hideLoadingOverlay() {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
         overlay.classList.add('hidden');
+    }
+}
+
+// Update loading counter
+function updateLoadingCounter(loaded, total) {
+    const counter = document.getElementById('loadingCounter');
+    if (counter && total > 0) {
+        counter.textContent = `${loaded} / ${total}`;
+        counter.style.display = 'block';
+    } else if (counter) {
+        counter.style.display = 'none';
     }
 }
 
@@ -1771,6 +1784,9 @@ async function loadTracksFromServer(retryCount = 0) {
                 console.log(`📍 Loading ${result.tracks.length} tracks from database...`);
             }
 
+            const totalTracks = tracksToLoad.length;
+            let loadedTracks = 0;
+
             for (const trackData of tracksToLoad) {
                 console.log(`📄 Loading GPX file: ${trackData.filename}`);
                 // Get GPX content - encode filename to handle special characters
@@ -1799,6 +1815,9 @@ async function loadTracksFromServer(retryCount = 0) {
                         };
 
                         state.tracks.push(track);
+                        loadedTracks++;
+                        // Update counter after each track is loaded
+                        updateLoadingCounter(loadedTracks, totalTracks);
                         // Don't add to map here - renderTracks() will handle it with filters
                     }
                 }
