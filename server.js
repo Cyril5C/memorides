@@ -465,16 +465,23 @@ app.post('/api/photos/upload',
             // Extract metadata from request body
             const { name, latitude, longitude, trackId } = req.body;
 
-        // Save to database
-        const photo = await prisma.photo.create({
-            data: {
+            // Prepare photo data
+            const photoData = {
                 filename: req.file.filename,
                 name: name || req.file.originalname,
                 path: `/uploads/photos/${req.file.filename}`,
-                latitude: parseFloat(latitude),
-                longitude: parseFloat(longitude),
                 trackId: trackId || null
+            };
+
+            // Add GPS coordinates only if provided
+            if (latitude && longitude) {
+                photoData.latitude = parseFloat(latitude);
+                photoData.longitude = parseFloat(longitude);
             }
+
+        // Save to database
+        const photo = await prisma.photo.create({
+            data: photoData
         });
 
         res.json({

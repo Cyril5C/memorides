@@ -777,7 +777,7 @@ async function processAndUploadPhoto(file, index, total) {
         // Extract EXIF data first (before compression)
         let gpsData = await extractGPSData(file);
 
-        // If no GPS data, use the end point of the current viewing track
+        // If no GPS data, try using the end point of the current viewing track
         if (!gpsData) {
             if (currentViewingTrack && currentViewingTrack.points && currentViewingTrack.points.length > 0) {
                 const lastPoint = currentViewingTrack.points[currentViewingTrack.points.length - 1];
@@ -787,7 +787,7 @@ async function processAndUploadPhoto(file, index, total) {
                 };
                 console.log(`⚠️  No GPS data in photo, using track end point`);
             } else {
-                throw new Error('No GPS data and no track selected');
+                console.log(`⚠️  No GPS data in photo and no track selected, uploading without location`);
             }
         }
 
@@ -802,8 +802,13 @@ async function processAndUploadPhoto(file, index, total) {
         const formData = new FormData();
         formData.append('photo', uploadFile);
         formData.append('name', file.name);
-        formData.append('latitude', gpsData.latitude.toString());
-        formData.append('longitude', gpsData.longitude.toString());
+
+        // Only add GPS coordinates if available
+        if (gpsData) {
+            formData.append('latitude', gpsData.latitude.toString());
+            formData.append('longitude', gpsData.longitude.toString());
+        }
+
         if (currentViewingTrack) {
             formData.append('trackId', currentViewingTrack.id);
         }
@@ -989,6 +994,12 @@ function convertDMSToDD(dms, ref) {
 
 // Add photo to map
 function addPhotoToMap(photo) {
+    // Skip photos without GPS coordinates
+    if (!photo.latitude || !photo.longitude) {
+        console.log(`⚠️  Photo ${photo.name} has no GPS coordinates, skipping map marker`);
+        return;
+    }
+
     const icon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -2181,8 +2192,7 @@ async function handleAddTrackPhotos(event) {
                     };
                     console.log(`📍 No GPS in ${file.name}, using track end point:`, gpsData);
                 } else {
-                    errors.push(`${file.name}: Pas de données GPS`);
-                    return null;
+                    console.log(`⚠️  No GPS in ${file.name} and no track points, uploading without location`);
                 }
             }
 
@@ -2193,8 +2203,13 @@ async function handleAddTrackPhotos(event) {
             const formData = new FormData();
             formData.append('photo', compressedFile);
             formData.append('name', file.name);
-            formData.append('latitude', gpsData.latitude.toString());
-            formData.append('longitude', gpsData.longitude.toString());
+
+            // Only add GPS coordinates if available
+            if (gpsData) {
+                formData.append('latitude', gpsData.latitude.toString());
+                formData.append('longitude', gpsData.longitude.toString());
+            }
+
             formData.append('trackId', track.id);
 
             const response = await fetch(`${API_BASE_URL}/photos/upload`, {

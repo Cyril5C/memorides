@@ -60,8 +60,8 @@ model Photo {
   filename  String   @unique
   name      String
   path      String
-  latitude  Float
-  longitude Float
+  latitude  Float?   // Optional: photo may not have GPS data
+  longitude Float?   // Optional: photo may not have GPS data
   createdAt DateTime @default(now())
   trackId   String?  // Optional: photo can be linked to a track
   track     Track?   @relation(fields: [trackId], references: [id], onDelete: SetNull)
