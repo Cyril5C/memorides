@@ -1718,8 +1718,27 @@ async function loadSingleTrack(trackId) {
     }
 }
 
+// Show loading overlay
+function showLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+    }
+}
+
+// Hide loading overlay
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+}
+
 // Load tracks from server
 async function loadTracksFromServer(retryCount = 0) {
+    // Show loading overlay
+    showLoadingOverlay();
+
     try {
         console.log('Loading tracks from:', API_BASE_URL);
         const response = await fetch(`${API_BASE_URL}/gpx/list`);
@@ -1797,6 +1816,9 @@ async function loadTracksFromServer(retryCount = 0) {
         }
         console.error('Error loading tracks from server:', error);
         alert(`Erreur lors du chargement des traces: ${error.message}`);
+    } finally {
+        // Always hide loading overlay when done
+        hideLoadingOverlay();
     }
 }
 

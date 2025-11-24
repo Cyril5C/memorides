@@ -32,6 +32,14 @@
             <div id="map"></div>
             <button class="settings-btn" id="settingsButton" title="Gérer les libellés" style="display: none;">⚙️</button>
 
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="loading-overlay hidden">
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <p>Chargement des traces...</p>
+                </div>
+            </div>
+
             <!-- Hamburger Menu Button -->
             <button class="hamburger-btn" id="hamburgerButton" title="Menu">
                 <span></span>
@@ -334,7 +342,7 @@
     </div>
 
     <!-- Custom JS -->
-    <script src="app.js?v=20251124-02"></script>
+    <script src="app.js?v=20251124-03"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
