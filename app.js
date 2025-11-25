@@ -160,13 +160,43 @@ function attachEventListeners() {
 
     // Modal Close
     document.getElementById('closeModal').addEventListener('click', () => {
+        // Exit fullscreen if active
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
         document.getElementById('photoModal').classList.add('hidden');
     });
 
     // Close modal on background click
     document.getElementById('photoModal').addEventListener('click', (e) => {
         if (e.target.id === 'photoModal') {
+            // Exit fullscreen if active
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
             document.getElementById('photoModal').classList.add('hidden');
+        }
+    });
+
+    // Fullscreen button
+    document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        const modal = document.getElementById('photoModal');
+        if (!document.fullscreenElement) {
+            modal.requestFullscreen().catch(err => {
+                console.error('Error attempting to enable fullscreen:', err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // Handle ESC key to exit fullscreen
+    document.addEventListener('fullscreenchange', () => {
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (document.fullscreenElement) {
+            fullscreenBtn.textContent = '⛶';
+        } else {
+            fullscreenBtn.textContent = '⛶';
         }
     });
 
