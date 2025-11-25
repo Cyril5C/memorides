@@ -23,7 +23,35 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20251125-99">
+
+    <!-- Inline CSS pour forcer l'affichage du bouton fullscreen -->
+    <style>
+        /* Photo modal doit être au-dessus de la modal de trace */
+        #photoModal {
+            z-index: 10000 !important;
+        }
+
+        #fullscreenBtn {
+            position: fixed !important;
+            top: 1rem !important;
+            right: 5rem !important;
+            background: #ef4444 !important;
+            color: white !important;
+            border: none !important;
+            width: 3rem !important;
+            height: 3rem !important;
+            border-radius: 50% !important;
+            font-size: 1.5rem !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 999999 !important;
+            transition: background 0.2s !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -86,7 +114,6 @@
     <div id="photoModal" class="modal hidden">
         <div class="modal-content">
             <button class="modal-close" id="closeModal"></button>
-            <button class="modal-fullscreen" id="fullscreenBtn" title="Plein écran">⛶</button>
             <img id="modalImage" src="" alt="">
             <div class="modal-info">
                 <h3 id="modalPhotoName"></h3>
@@ -358,7 +385,7 @@
     </div>
 
     <!-- Custom JS -->
-    <script src="app.js?v=20251125-04"></script>
+    <script src="app.js?v=20251125-11"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>

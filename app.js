@@ -160,47 +160,15 @@ function attachEventListeners() {
 
     // Modal Close
     document.getElementById('closeModal').addEventListener('click', () => {
-        // Exit fullscreen if active
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
         document.getElementById('photoModal').classList.add('hidden');
     });
 
     // Close modal on background click
     document.getElementById('photoModal').addEventListener('click', (e) => {
         if (e.target.id === 'photoModal') {
-            // Exit fullscreen if active
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
             document.getElementById('photoModal').classList.add('hidden');
         }
     });
-
-    // Fullscreen button
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', () => {
-            const modal = document.getElementById('photoModal');
-            if (!document.fullscreenElement) {
-                modal.requestFullscreen().catch(err => {
-                    console.error('Error attempting to enable fullscreen:', err);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        });
-
-        // Handle ESC key to exit fullscreen
-        document.addEventListener('fullscreenchange', () => {
-            if (document.fullscreenElement) {
-                fullscreenBtn.textContent = '⛶';
-            } else {
-                fullscreenBtn.textContent = '⛶';
-            }
-        });
-    }
 
     // Delete photo button
     document.getElementById('deletePhotoBtn').addEventListener('click', handlePhotoDelete);
@@ -759,6 +727,7 @@ function addTrackToMap(track) {
 
         // Add click handler to each segment
         polyline.on('click', () => {
+            console.log('🔵 Polyline clicked for track:', track.name || track.filename);
             showTrackInfoModal(track);
         });
 
@@ -785,6 +754,7 @@ function addTrackToMap(track) {
         });
 
         startMarker.on('click', () => {
+            console.log('🟢 Start marker clicked for track:', track.name || track.filename);
             showTrackInfoModal(track);
         });
 
@@ -805,6 +775,7 @@ function addTrackToMap(track) {
         });
 
         endMarker.on('click', () => {
+            console.log('🏁 End marker clicked for track:', track.name || track.filename);
             showTrackInfoModal(track);
         });
 
@@ -1127,12 +1098,18 @@ function addPhotoToMap(photo) {
 let currentPhotoId = null;
 
 function showPhotoModal(photo) {
+    console.log('📸 showPhotoModal called!', photo);
     currentPhotoId = photo.id;
     const photoUrl = `${BASE_URL}${photo.path}`;
     document.getElementById('modalImage').src = photoUrl;
     document.getElementById('modalPhotoName').textContent = photo.name;
-    document.getElementById('modalPhotoLocation').textContent =
-        `Coordonnées: ${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}`;
+
+    // Handle photos without GPS coordinates
+    const locationText = photo.latitude && photo.longitude
+        ? `Coordonnées: ${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}`
+        : 'Pas de coordonnées GPS';
+    document.getElementById('modalPhotoLocation').textContent = locationText;
+
     document.getElementById('photoModal').classList.remove('hidden');
 }
 
@@ -1195,13 +1172,13 @@ window.expandTrackPhoto = function(photoId, trackId) {
     const overlay = document.createElement('div');
     overlay.id = 'expandedPhotoOverlay';
     overlay.style.cssText = `
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background: rgba(0,0,0,0.9);
-        z-index: 2000;
+        z-index: 10000;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1279,9 +1256,9 @@ async function handlePhotoDelete() {
             });
 
             // Close modal
-            document.getElementById('photoModal').classList.add('hidden');
+            const photoModal = document.getElementById('photoModal');
+            photoModal.classList.add('hidden');
             currentPhotoId = null;
-
             showToast('🗑️', 'Photo supprimée', null, 1500);
         } else {
             showToast('❌', 'Erreur', 'Impossible de supprimer la photo');
@@ -1294,70 +1271,89 @@ async function handlePhotoDelete() {
 
 // Show track info modal
 function showTrackInfoModal(track, isSharedLink = false) {
-    // Store current track for photo upload fallback
-    currentViewingTrack = track;
+    console.log('📋 showTrackInfoModal called for track:', track.name || track.filename);
 
-    const displayTitle = track.title || track.name;
-    const typeIcon = getTypeIcon(track.type);
+    try {
+        // Store current track for photo upload fallback
+        currentViewingTrack = track;
 
-    document.getElementById('trackInfoTitleText').textContent = `${typeIcon} ${displayTitle}`;
-    document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
-    document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
-    // Calculate duration dynamically based on distance and average speed
-    const duration = track.distance ? calculateDuration(track.distance * 1000) : 0;
-    document.getElementById('trackInfoDuration').textContent = formatDuration(duration);
-    // Display completion status
-    if (track.completedAt) {
-        const date = new Date(track.completedAt);
-        const formattedDate = date.toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-        document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
-    } else {
-        document.getElementById('trackInfoCompleted').textContent = 'A faire !';
+        const displayTitle = track.title || track.name;
+        const typeIcon = getTypeIcon(track.type);
+
+        document.getElementById('trackInfoTitleText').textContent = `${typeIcon} ${displayTitle}`;
+        document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
+        document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
+        // Calculate duration dynamically based on distance and average speed
+        const duration = track.distance ? calculateDuration(track.distance * 1000) : 0;
+        document.getElementById('trackInfoDuration').textContent = formatDuration(duration);
+        // Display completion status
+        if (track.completedAt) {
+            const date = new Date(track.completedAt);
+            const formattedDate = date.toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
+        } else {
+            document.getElementById('trackInfoCompleted').textContent = 'A faire !';
+        }
+    } catch (error) {
+        console.error('❌ Error in showTrackInfoModal (part 1):', error);
+        return;
     }
 
-    // Hide/show back arrow and edit button based on shared link mode
-    const backArrow = document.querySelector('.back-arrow');
-    const editBtn = document.getElementById('editTrackFromInfo');
-    if (isSharedLink) {
-        backArrow.style.display = 'none';
-        editBtn.style.display = 'none';
-    } else {
-        backArrow.style.display = 'inline';
-        editBtn.style.display = 'inline-block';
+    try {
+        // Hide/show back arrow and edit button based on shared link mode
+        const backArrow = document.querySelector('.back-arrow');
+        const editBtn = document.getElementById('editTrackFromInfo');
+        if (isSharedLink) {
+            backArrow.style.display = 'none';
+            editBtn.style.display = 'none';
+        } else {
+            backArrow.style.display = 'inline';
+            editBtn.style.display = 'inline-block';
+        }
+
+        // Show/hide labels section
+        const labelsContainer = document.getElementById('trackInfoLabelsContainer');
+        if (track.labels && Array.isArray(track.labels) && track.labels.length > 0) {
+            const labelsHtml = track.labels.map(trackLabel =>
+                `<span class="label-tag">${trackLabel.label.name}</span>`
+            ).join('');
+            document.getElementById('trackInfoLabels').innerHTML = labelsHtml;
+            labelsContainer.style.display = 'block';
+        } else {
+            labelsContainer.style.display = 'none';
+        }
+
+        // Show/hide comments section
+        const commentsContainer = document.getElementById('trackInfoCommentsContainer');
+        if (track.comments && track.comments.trim()) {
+            document.getElementById('trackInfoComments').textContent = track.comments;
+            commentsContainer.style.display = 'block';
+        } else {
+            commentsContainer.style.display = 'none';
+        }
+
+        // Store track ID in edit, download and share buttons
+        document.getElementById('editTrackFromInfo').dataset.trackId = track.id;
+        document.getElementById('downloadTrackFromInfo').dataset.trackId = track.id;
+        document.getElementById('shareTrackBtn').dataset.trackId = track.id;
+
+        console.log('✅ About to show modal...');
+        // Show modal
+        const modal = document.getElementById('trackInfoModal');
+        console.log('📊 Modal classes before:', modal.className);
+        modal.classList.remove('hidden');
+        console.log('📊 Modal classes after:', modal.className);
+        console.log('📊 Modal display style:', window.getComputedStyle(modal).display);
+        console.log('📊 Modal z-index:', window.getComputedStyle(modal).zIndex);
+        console.log('✅ Modal shown!');
+    } catch (error) {
+        console.error('❌ Error in showTrackInfoModal (part 2):', error);
+        return;
     }
-
-    // Show/hide labels section
-    const labelsContainer = document.getElementById('trackInfoLabelsContainer');
-    if (track.labels && Array.isArray(track.labels) && track.labels.length > 0) {
-        const labelsHtml = track.labels.map(trackLabel =>
-            `<span class="label-tag">${trackLabel.label.name}</span>`
-        ).join('');
-        document.getElementById('trackInfoLabels').innerHTML = labelsHtml;
-        labelsContainer.style.display = 'block';
-    } else {
-        labelsContainer.style.display = 'none';
-    }
-
-    // Show/hide comments section
-    const commentsContainer = document.getElementById('trackInfoCommentsContainer');
-    if (track.comments && track.comments.trim()) {
-        document.getElementById('trackInfoComments').textContent = track.comments;
-        commentsContainer.style.display = 'block';
-    } else {
-        commentsContainer.style.display = 'none';
-    }
-
-    // Store track ID in edit, download and share buttons
-    document.getElementById('editTrackFromInfo').dataset.trackId = track.id;
-    document.getElementById('downloadTrackFromInfo').dataset.trackId = track.id;
-    document.getElementById('shareTrackBtn').dataset.trackId = track.id;
-
-    // Show modal
-    document.getElementById('trackInfoModal').classList.remove('hidden');
 
     // Initialize or reset track detail map
     setTimeout(() => {

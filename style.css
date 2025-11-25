@@ -500,50 +500,39 @@ select {
     background: #dc2626;
 }
 
-.modal-fullscreen {
+/* Photo container - needed for absolute positioning of fullscreen button */
+.photo-container {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.modal-fullscreen-btn {
     position: absolute;
     top: 0.5rem;
-    right: 3.5rem;
-    background: var(--primary-color);
+    left: 0.5rem;
+    background: rgba(239, 68, 68, 0.95);
     color: white;
-    border: none;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    font-size: 1.2rem;
+    border: 2px solid white;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.5rem;
+    font-size: 1.25rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
+    z-index: 100;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
-.modal-fullscreen:active {
-    background: #1e40af;
+.modal-fullscreen-btn:hover {
+    background: rgba(30, 64, 175, 0.9);
 }
 
-#photoModal:fullscreen .modal-content {
-    max-width: 100vw;
-    max-height: 100vh;
-    width: 100vw;
-    height: 100vh;
-    border-radius: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: black;
-}
-
-#photoModal:fullscreen #modalImage {
-    max-width: 100vw;
-    max-height: 90vh;
-    object-fit: contain;
-}
-
-#photoModal:fullscreen .modal-info,
-#photoModal:fullscreen #deletePhotoBtn {
-    display: none;
+.modal-fullscreen-btn:active {
+    background: rgba(30, 64, 175, 0.9);
 }
 
 #modalImage {
@@ -1570,23 +1559,41 @@ select {
     transform: scale(1.1);
 }
 
-/* Fullscreen modal for track details (mobile-optimized) */
+/* Fullscreen modal for track details */
 .modal-fullscreen {
-    padding: 0; /* Remove padding on mobile for true fullscreen */
-    background: white; /* White background instead of dark overlay */
+    z-index: 2000; /* Ensure modal is above map and other elements */
 }
 
-.modal-fullscreen .modal-fullscreen-content {
-    max-width: 100%;
-    width: 100vw; /* Full viewport width */
-    max-height: 100%;
-    height: 100vh; /* Full viewport height */
-    height: 100dvh; /* Dynamic viewport height for mobile browsers */
-    border-radius: 0;
-    padding: 1rem;
-    padding-top: 60px; /* Extra padding for iPhone notch/Dynamic Island */
+/* Default styles for modal-fullscreen-content (desktop) */
+.modal-fullscreen-content {
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
     overflow-y: auto;
-    margin: 0; /* Remove any margin */
+}
+
+/* Mobile-specific styles */
+@media (max-width: 767px) {
+    .modal-fullscreen {
+        padding: 0; /* Remove padding on mobile for true fullscreen */
+        background: white; /* White background instead of dark overlay */
+    }
+
+    .modal-fullscreen .modal-fullscreen-content {
+        max-width: 100%;
+        width: 100vw; /* Full viewport width */
+        max-height: 100%;
+        height: 100vh; /* Full viewport height */
+        height: 100dvh; /* Dynamic viewport height for mobile browsers */
+        border-radius: 0;
+        padding: 1rem;
+        padding-top: 60px; /* Extra padding for iPhone notch/Dynamic Island */
+        overflow-y: auto;
+        margin: 0; /* Remove any margin */
+    }
 }
 
 .modal-fullscreen #trackInfoContent h3 {
