@@ -1705,8 +1705,9 @@ function formatElevation(m) {
 
 function formatDuration(minutes) {
     if (!minutes) return 'N/A';
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
+    const totalMinutes = Math.round(minutes);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
     return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
 }
 
