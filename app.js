@@ -3055,14 +3055,15 @@ function showFilterModal() {
         labelFiltersContainer.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Aucun libellé disponible</p>';
     } else {
         state.labels.forEach(label => {
-            const isChecked = state.filters.labels.includes(label.id);
-            const labelFilterHtml = `
-                <label class="filter-option">
-                    <input type="checkbox" name="labelFilter" value="${label.id}" ${isChecked ? 'checked' : ''}>
-                    <span>${label.name}</span>
-                </label>
-            `;
-            labelFiltersContainer.insertAdjacentHTML('beforeend', labelFilterHtml);
+            const isActive = state.filters.labels.includes(label.id);
+            const chip = document.createElement('span');
+            chip.className = `label-chip${isActive ? ' active' : ''}`;
+            chip.textContent = label.name;
+            chip.dataset.labelId = label.id;
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('active');
+            });
+            labelFiltersContainer.appendChild(chip);
         });
     }
 
@@ -3092,9 +3093,9 @@ async function applyFilters() {
         const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
         state.filters.completion = completionFilter;
 
-        // Get selected label filters
-        const selectedLabelCheckboxes = document.querySelectorAll('input[name="labelFilter"]:checked');
-        state.filters.labels = Array.from(selectedLabelCheckboxes).map(checkbox => checkbox.value);
+        // Get selected label filters from active chips
+        const activeChips = document.querySelectorAll('.label-chip.active');
+        state.filters.labels = Array.from(activeChips).map(chip => chip.dataset.labelId);
 
         // Save filters to localStorage
         saveFiltersToStorage();
