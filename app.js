@@ -179,26 +179,28 @@ function attachEventListeners() {
     });
 
     // Fullscreen button
-    document.getElementById('fullscreenBtn').addEventListener('click', () => {
-        const modal = document.getElementById('photoModal');
-        if (!document.fullscreenElement) {
-            modal.requestFullscreen().catch(err => {
-                console.error('Error attempting to enable fullscreen:', err);
-            });
-        } else {
-            document.exitFullscreen();
-        }
-    });
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', () => {
+            const modal = document.getElementById('photoModal');
+            if (!document.fullscreenElement) {
+                modal.requestFullscreen().catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
 
-    // Handle ESC key to exit fullscreen
-    document.addEventListener('fullscreenchange', () => {
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
-        if (document.fullscreenElement) {
-            fullscreenBtn.textContent = '⛶';
-        } else {
-            fullscreenBtn.textContent = '⛶';
-        }
-    });
+        // Handle ESC key to exit fullscreen
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenBtn.textContent = '⛶';
+            } else {
+                fullscreenBtn.textContent = '⛶';
+            }
+        });
+    }
 
     // Delete photo button
     document.getElementById('deletePhotoBtn').addEventListener('click', handlePhotoDelete);
