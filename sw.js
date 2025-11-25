@@ -1,5 +1,5 @@
 // Service Worker for Memorides PWA
-const CACHE_VERSION = '1.2.6'; // Increment this on each deployment
+const CACHE_VERSION = '1.2.7'; // Increment this on each deployment
 const CACHE_NAME = `memorides-v${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   '/',
@@ -15,11 +15,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Caching app assets');
         return cache.addAll(ASSETS_TO_CACHE);
       })
       .catch((error) => {
-        console.error('Cache install failed:', error);
       })
   );
   self.skipWaiting();
@@ -32,7 +30,6 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -86,11 +83,9 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request)
           .then((response) => {
             if (response) {
-              console.log('Serving from cache (offline):', event.request.url);
               return response;
             }
             // No cache either
-            console.error('No cache available for:', event.request.url);
           });
       })
   );

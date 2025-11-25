@@ -54,7 +54,6 @@ function loadFiltersFromStorage() {
         const savedFilters = localStorage.getItem('memorides_filters');
         if (savedFilters) {
             const filters = JSON.parse(savedFilters);
-            console.log('📋 Loaded saved filters:', filters);
             return filters;
         }
     } catch (error) {
@@ -73,7 +72,6 @@ function loadFiltersFromStorage() {
 function saveFiltersToStorage() {
     try {
         localStorage.setItem('memorides_filters', JSON.stringify(state.filters));
-        console.log('💾 Saved filters to storage');
     } catch (error) {
         console.error('Error saving filters to storage:', error);
     }
@@ -85,7 +83,6 @@ function loadAverageSpeedFromStorage() {
         const savedSpeed = localStorage.getItem('memorides_average_speed');
         if (savedSpeed) {
             const speed = parseFloat(savedSpeed);
-            console.log('📋 Loaded saved average speed:', speed, 'km/h');
             return speed;
         }
     } catch (error) {
@@ -98,7 +95,6 @@ function loadAverageSpeedFromStorage() {
 function saveAverageSpeedToStorage(speed) {
     try {
         localStorage.setItem('memorides_average_speed', speed.toString());
-        console.log('💾 Saved average speed to storage:', speed, 'km/h');
     } catch (error) {
         console.error('Error saving average speed to storage:', error);
     }
@@ -186,7 +182,6 @@ function attachEventListeners() {
         e.preventDefault();
         e.stopPropagation();
         const trackId = editBtn.dataset.trackId;
-        console.log('Edit button clicked, trackId:', trackId);
         closeTrackInfoModal();
         editTrack(trackId);
     };
@@ -727,7 +722,6 @@ function addTrackToMap(track) {
 
         // Add click handler to each segment
         polyline.on('click', () => {
-            console.log('🔵 Polyline clicked for track:', track.name || track.filename);
             showTrackInfoModal(track);
         });
 
@@ -754,7 +748,6 @@ function addTrackToMap(track) {
         });
 
         startMarker.on('click', () => {
-            console.log('🟢 Start marker clicked for track:', track.name || track.filename);
             showTrackInfoModal(track);
         });
 
@@ -775,7 +768,6 @@ function addTrackToMap(track) {
         });
 
         endMarker.on('click', () => {
-            console.log('🏁 End marker clicked for track:', track.name || track.filename);
             showTrackInfoModal(track);
         });
 
@@ -816,7 +808,6 @@ async function compressImage(file, maxSizeMB = 1) {
 
                         if (sizeMB <= maxSizeMB || quality <= 0.1) {
                             // Success or can't compress more
-                            console.log(`✅ Photo compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${sizeMB.toFixed(2)}MB (quality: ${quality})`);
                             resolve(new File([blob], file.name, { type: 'image/jpeg' }));
                         } else {
                             // Try with lower quality
@@ -848,7 +839,6 @@ async function compressImage(file, maxSizeMB = 1) {
 // Process and upload a single photo
 async function processAndUploadPhoto(file, index, total) {
     try {
-        console.log(`📸 [${index + 1}/${total}] Processing: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
 
         // Extract EXIF data first (before compression)
         let gpsData = await extractGPSData(file);
@@ -861,16 +851,13 @@ async function processAndUploadPhoto(file, index, total) {
                     latitude: lastPoint.lat,
                     longitude: lastPoint.lon
                 };
-                console.log(`⚠️  No GPS data in photo, using track end point`);
             } else {
-                console.log(`⚠️  No GPS data in photo and no track selected, uploading without location`);
             }
         }
 
         // Compress image if larger than 1MB
         let uploadFile = file;
         if (file.size > 1024 * 1024) {
-            console.log('🗜️  Compressing...');
             uploadFile = await compressImage(file);
         }
 
@@ -897,7 +884,6 @@ async function processAndUploadPhoto(file, index, total) {
         const result = await response.json();
 
         if (result.success && result.photo) {
-            console.log(`✅ [${index + 1}/${total}] Uploaded: ${file.name}`);
             return result.photo;
         } else {
             throw new Error(result.error || 'Upload failed');
@@ -929,7 +915,6 @@ async function handlePhotoUpload(event) {
         return;
     }
 
-    console.log(`\n📤 Starting upload of ${files.length} photo(s)...`);
     const startTime = Date.now();
 
     // Create and show progress toast
@@ -987,7 +972,6 @@ async function handlePhotoUpload(event) {
     renderPhotos();
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`\n✅ Upload completed in ${duration}s: ${results.length} succeeded, ${errors.length} failed`);
 
     // Update toast with results
     if (errors.length > 0) {
@@ -1073,7 +1057,6 @@ function convertDMSToDD(dms, ref) {
 function addPhotoToMap(photo) {
     // Skip photos without GPS coordinates
     if (!photo.latitude || !photo.longitude) {
-        console.log(`⚠️  Photo ${photo.name} has no GPS coordinates, skipping map marker`);
         return;
     }
 
@@ -1098,7 +1081,6 @@ function addPhotoToMap(photo) {
 let currentPhotoId = null;
 
 function showPhotoModal(photo) {
-    console.log('📸 showPhotoModal called!', photo);
     currentPhotoId = photo.id;
     const photoUrl = `${BASE_URL}${photo.path}`;
     document.getElementById('modalImage').src = photoUrl;
@@ -1271,7 +1253,6 @@ async function handlePhotoDelete() {
 
 // Show track info modal
 function showTrackInfoModal(track, isSharedLink = false) {
-    console.log('📋 showTrackInfoModal called for track:', track.name || track.filename);
 
     try {
         // Store current track for photo upload fallback
@@ -1341,15 +1322,9 @@ function showTrackInfoModal(track, isSharedLink = false) {
         document.getElementById('downloadTrackFromInfo').dataset.trackId = track.id;
         document.getElementById('shareTrackBtn').dataset.trackId = track.id;
 
-        console.log('✅ About to show modal...');
         // Show modal
         const modal = document.getElementById('trackInfoModal');
-        console.log('📊 Modal classes before:', modal.className);
         modal.classList.remove('hidden');
-        console.log('📊 Modal classes after:', modal.className);
-        console.log('📊 Modal display style:', window.getComputedStyle(modal).display);
-        console.log('📊 Modal z-index:', window.getComputedStyle(modal).zIndex);
-        console.log('✅ Modal shown!');
     } catch (error) {
         console.error('❌ Error in showTrackInfoModal (part 2):', error);
         return;
@@ -1781,7 +1756,6 @@ function formatDuration(minutes) {
 // Load single track (for shared links)
 async function loadSingleTrack(trackId) {
     try {
-        console.log('Loading single track:', trackId);
         const response = await fetch(`${API_BASE_URL}/gpx/list`);
 
         if (!response.ok) {
@@ -1802,7 +1776,6 @@ async function loadSingleTrack(trackId) {
                 return;
             }
 
-            console.log(`📄 Loading GPX file: ${trackData.filename}`);
             const encodedFilename = encodeURIComponent(trackData.filename);
             const contentResponse = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`);
 
@@ -1825,7 +1798,6 @@ async function loadSingleTrack(trackId) {
                     };
 
                     state.tracks.push(track);
-                    console.log('✅ Track loaded:', track.name);
                 }
             }
         }
@@ -1870,13 +1842,11 @@ async function loadTracksFromServer(retryCount = 0) {
     showLoadingOverlay();
 
     try {
-        console.log('Loading tracks from:', API_BASE_URL);
         const response = await fetch(`${API_BASE_URL}/gpx/list`);
 
         if (!response.ok) {
             // Retry once on first load before showing error (handles PWA first-load race condition)
             if (retryCount === 0) {
-                console.log('First load failed, retrying in 1 second...');
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return loadTracksFromServer(1);
             }
@@ -1886,7 +1856,6 @@ async function loadTracksFromServer(retryCount = 0) {
         }
 
         const result = await response.json();
-        console.log('Tracks loaded:', result);
 
         if (result.success && result.tracks && result.tracks.length > 0) {
             // Apply filters to determine which tracks to load
@@ -1913,19 +1882,15 @@ async function loadTracksFromServer(retryCount = 0) {
                 tracksToLoad = [...tracksToLoad]
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .slice(0, 3);
-                console.log(`📍 Loading ${tracksToLoad.length} recent tracks (out of ${result.tracks.length} total)...`);
             } else {
-                console.log(`📍 Loading ${tracksToLoad.length} tracks from database (filtered from ${result.tracks.length} total)...`);
             }
 
             const totalTracks = tracksToLoad.length;
             let loadedTracks = 0;
 
             for (const trackData of tracksToLoad) {
-                console.log(`📄 Loading GPX file: ${trackData.filename}`);
                 // Get GPX content - encode filename to handle special characters
                 const encodedFilename = encodeURIComponent(trackData.filename);
-                console.log(`🔗 Encoded URL: ${API_BASE_URL}/gpx/${encodedFilename}`);
                 const contentResponse = await fetch(`${API_BASE_URL}/gpx/${encodedFilename}`);
 
                 // Skip if file not found (happens when volume is not persistent)
@@ -1934,7 +1899,6 @@ async function loadTracksFromServer(retryCount = 0) {
                     console.error(`   URL attempted: ${API_BASE_URL}/gpx/${trackData.filename}`);
                     continue;
                 }
-                console.log(`✅ GPX file loaded: ${trackData.filename}`);
 
                 const contentResult = await contentResponse.json();
 
@@ -1963,7 +1927,6 @@ async function loadTracksFromServer(retryCount = 0) {
     } catch (error) {
         // Retry once on first load before showing error (handles PWA first-load race condition)
         if (retryCount === 0) {
-            console.log('First load error, retrying in 1 second...');
             await new Promise(resolve => setTimeout(resolve, 1000));
             return loadTracksFromServer(1);
         }
@@ -2392,9 +2355,7 @@ async function handleAddTrackPhotos(event) {
                         latitude: lastPoint.lat,
                         longitude: lastPoint.lon
                     };
-                    console.log(`📍 No GPS in ${file.name}, using track end point:`, gpsData);
                 } else {
-                    console.log(`⚠️  No GPS in ${file.name} and no track points, uploading without location`);
                 }
             }
 
@@ -3139,11 +3100,9 @@ async function applyFilters() {
         // Save filters to localStorage
         saveFiltersToStorage();
 
-        console.log(`🔍 Filter change: ${previousDisplayFilter} -> ${displayFilter}`);
 
         // If display filter changed, reload tracks
         if (displayFilter !== previousDisplayFilter) {
-            console.log('🔄 Display filter changed, reloading tracks...');
             // Clear current tracks and layers completely
             state.tracks.forEach(track => {
                 const layerGroup = state.layers.tracks[track.id];
@@ -3158,7 +3117,6 @@ async function applyFilters() {
             // Reload with new filter
             await loadTracksFromServer();
         } else {
-            console.log('🎨 Display filter unchanged, just re-rendering...');
             // Just re-render with existing tracks
             renderTracks();
             // Also update list view if currently active
