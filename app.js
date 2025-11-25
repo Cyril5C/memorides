@@ -1291,7 +1291,7 @@ function showTrackInfoModal(track, isSharedLink = false) {
             const date = new Date(track.completedAt);
             const formattedDate = date.toLocaleDateString('fr-FR', {
                 year: 'numeric',
-                month: 'long',
+                month: 'short',
                 day: 'numeric'
             });
             document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
@@ -1455,6 +1455,8 @@ function showTrackInfoModal(track, isSharedLink = false) {
         state.trackDetailMap.fitBounds(track.bounds, { padding: [30, 30] });
 
         // Add photos associated with this track
+        // Store photo markers for toggle functionality
+        const photoMarkers = [];
         if (state.photos && state.photos.length > 0) {
             const trackPhotos = state.photos.filter(photo => photo.trackId === track.id);
             trackPhotos.forEach(photo => {
@@ -1473,6 +1475,8 @@ function showTrackInfoModal(track, isSharedLink = false) {
                 marker.on('click', () => {
                     window.expandTrackPhoto(photo.id);
                 });
+
+                photoMarkers.push(marker);
             });
         }
 
@@ -1505,6 +1509,41 @@ function showTrackInfoModal(track, isSharedLink = false) {
                 }
             }, 300);
         });
+
+        // Setup toggle photos button
+        const togglePhotosBtn = document.getElementById('togglePhotosBtn');
+        if (togglePhotosBtn) {
+            if (photoMarkers.length > 0) {
+                // Show button
+                togglePhotosBtn.style.display = 'flex';
+
+                // Remove existing event listeners
+                const newTogglePhotosBtn = togglePhotosBtn.cloneNode(true);
+                togglePhotosBtn.parentNode.replaceChild(newTogglePhotosBtn, togglePhotosBtn);
+
+                // Start with photos visible
+                newTogglePhotosBtn.classList.add('active');
+                newTogglePhotosBtn.style.display = 'flex';
+
+                // Add new event listener
+                newTogglePhotosBtn.addEventListener('click', () => {
+                    newTogglePhotosBtn.classList.toggle('active');
+                    const isActive = newTogglePhotosBtn.classList.contains('active');
+
+                    // Show or hide photo markers
+                    photoMarkers.forEach(marker => {
+                        if (isActive) {
+                            marker.addTo(state.trackDetailMap);
+                        } else {
+                            state.trackDetailMap.removeLayer(marker);
+                        }
+                    });
+                });
+            } else {
+                // Hide button if no photos
+                togglePhotosBtn.style.display = 'none';
+            }
+        }
     }, 200); // Delay to ensure modal is visible and rendered
 }
 
@@ -3139,22 +3178,24 @@ async function applyFilters() {
 async function resetFilters() {
     const previousDisplayFilter = state.filters.display;
 
-    // Reset all filters to default
-    state.filters.display = 'recent';
+    // Reset all filters to show all tracks
+    state.filters.display = 'all';
     state.filters.completion = 'all';
     state.filters.labels = [];
 
     // Save reset filters to localStorage
     saveFiltersToStorage();
 
-    document.querySelector('input[name="displayFilter"][value="recent"]').checked = true;
+    document.querySelector('input[name="displayFilter"][value="all"]').checked = true;
     document.querySelector('input[name="completionFilter"][value="all"]').checked = true;
-    document.querySelectorAll('input[name="labelFilter"]:checked').forEach(checkbox => {
-        checkbox.checked = false;
+
+    // Deactivate all label chips
+    document.querySelectorAll('.label-chip.active').forEach(chip => {
+        chip.classList.remove('active');
     });
 
     // If display filter changed, reload tracks
-    if ('recent' !== previousDisplayFilter) {
+    if ('all' !== previousDisplayFilter) {
         // Clear current tracks and layers completely
         state.tracks.forEach(track => {
             const layerGroup = state.layers.tracks[track.id];
