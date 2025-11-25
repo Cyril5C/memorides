@@ -366,7 +366,7 @@ async function handleGPXUpload(event) {
                 const color = '#2563eb'; // Blue color for all tracks
                 const distance = calculateDistance(gpxData.points);
                 const elevation = calculateElevation(gpxData.points);
-                const duration = calculateDuration(gpxData.points);
+                const duration = calculateDuration(gpxData.points, distance);
                 const direction = detectDirection(gpxData.points);
 
                 // Upload file with metadata to server
@@ -378,7 +378,7 @@ async function handleGPXUpload(event) {
                 formData.append('color', color);
                 formData.append('distance', distance.toString());
                 formData.append('elevation', elevation.toString());
-                if (duration) formData.append('duration', duration.toString());
+                formData.append('duration', duration.toString());
 
                 const response = await fetch(`${API_BASE_URL}/gpx/upload`, {
                     method: 'POST',
@@ -554,15 +554,18 @@ function calculateElevation(points) {
     return elevationGain;
 }
 
-// Calculate duration
-function calculateDuration(points) {
-    const firstPoint = points.find(p => p.time);
-    const lastPoint = [...points].reverse().find(p => p.time);
+// Calculate duration based on distance and average speed (17 km/h)
+function calculateDuration(points, distance) {
+    // If distance is provided, use it; otherwise calculate it
+    const distanceKm = distance ? distance / 1000 : calculateDistance(points) / 1000;
 
-    if (firstPoint && lastPoint && firstPoint.time && lastPoint.time) {
-        return (lastPoint.time - firstPoint.time) / 1000 / 60; // minutes
-    }
-    return null;
+    // Average speed: 17 km/h
+    const averageSpeed = 17; // km/h
+
+    // Duration = Distance / Speed (result in hours, convert to minutes)
+    const durationMinutes = (distanceKm / averageSpeed) * 60;
+
+    return durationMinutes;
 }
 
 // Detect track direction (one-way, round-trip, or loop)
