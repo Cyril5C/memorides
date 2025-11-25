@@ -264,6 +264,7 @@
                 <button class="settings-tab active" data-tab="general">Général</button>
                 <button class="settings-tab" data-tab="labels">Libellés</button>
                 <button class="settings-tab" data-tab="types">Types de trace</button>
+                <button class="settings-tab" data-tab="gpxFiles">Fichiers GPX</button>
             </div>
 
             <!-- General Tab -->
@@ -291,6 +292,18 @@
                 <button class="btn btn-primary btn-small" id="addTrackTypeBtn" style="margin-bottom: 1rem;">➕ Ajouter un type</button>
                 <div id="trackTypesManagementList" class="labels-management-list">
                     <!-- Track types will be displayed here -->
+                </div>
+            </div>
+
+            <!-- GPX Files Tab -->
+            <div id="gpxFilesTab" class="settings-tab-content hidden">
+                <div style="padding: 1rem;">
+                    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 1rem;">
+                        Liste de tous les fichiers GPX stockés sur le serveur.
+                    </p>
+                    <div id="gpxFilesList" class="gpx-files-list">
+                        <!-- GPX files will be displayed here -->
+                    </div>
                 </div>
             </div>
         </div>

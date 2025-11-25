@@ -817,6 +817,113 @@ app.get('/api/admin/list-files', async (_req, res) => {
     }
 });
 
+// Get detailed list of GPX files with metadata
+app.get('/api/gpx-files/list', async (_req, res) => {
+    try {
+        const gpxFiles = await fsPromises.readdir(gpxDir).catch(() => []);
+
+        // Get file stats and track info for each file
+        const filesWithDetails = await Promise.all(
+            gpxFiles.map(async (filename) => {
+                try {
+                    const filePath = path.join(gpxDir, filename);
+                    const stats = await fsPromises.stat(filePath);
+
+                    // Check if this file is linked to a track
+                    const track = await prisma.track.findFirst({
+                        where: { filename },
+                        select: {
+                            id: true,
+                            name: true,
+                            title: true
+                        }
+                    });
+
+                    return {
+                        filename,
+                        size: stats.size,
+                        createdAt: stats.birthtime,
+                        modifiedAt: stats.mtime,
+                        hasTrack: !!track,
+                        trackInfo: track || null
+                    };
+                } catch (error) {
+                    return {
+                        filename,
+                        size: 0,
+                        createdAt: null,
+                        modifiedAt: null,
+                        hasTrack: false,
+                        trackInfo: null,
+                        error: error.message
+                    };
+                }
+            })
+        );
+
+        // Sort by modified date (most recent first)
+        filesWithDetails.sort((a, b) => {
+            if (!a.modifiedAt) return 1;
+            if (!b.modifiedAt) return -1;
+            return b.modifiedAt - a.modifiedAt;
+        });
+
+        res.json({ files: filesWithDetails });
+    } catch (error) {
+        console.error('List GPX files error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete a GPX file
+app.delete('/api/gpx-files/:filename',
+    param('filename').isString().trim().notEmpty(),
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { filename } = req.params;
+            const filePath = path.join(gpxDir, filename);
+
+            // Check if file exists
+            const fileExists = await fsPromises.access(filePath)
+                .then(() => true)
+                .catch(() => false);
+
+            if (!fileExists) {
+                return res.status(404).json({ error: 'File not found' });
+            }
+
+            // Check if there's a track using this file
+            const track = await prisma.track.findFirst({
+                where: { filename }
+            });
+
+            if (track) {
+                return res.status(400).json({
+                    error: 'Cannot delete file: it is linked to a track. Delete the track first.',
+                    trackId: track.id,
+                    trackName: track.name || track.title
+                });
+            }
+
+            // Delete the file
+            await fsPromises.unlink(filePath);
+
+            res.json({
+                success: true,
+                message: `File ${filename} deleted successfully`
+            });
+        } catch (error) {
+            console.error('Delete GPX file error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    }
+);
+
 // Admin cleanup orphaned entries endpoint (temporary)
 app.post('/api/admin/cleanup-orphans', async (_req, res) => {
     try {

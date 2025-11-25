@@ -100,6 +100,102 @@ function saveAverageSpeedToStorage(speed) {
     }
 }
 
+// ==========================================
+// GPX Files Management
+// ==========================================
+
+// Load and display GPX files
+async function loadAndDisplayGpxFiles() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/gpx-files/list`);
+        const result = await response.json();
+
+        const container = document.getElementById('gpxFilesList');
+
+        if (!result.files || result.files.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Aucun fichier GPX trouvé</p>';
+            return;
+        }
+
+        container.innerHTML = result.files.map(file => {
+            const fileSize = formatFileSize(file.size);
+            const modifiedDate = file.modifiedAt ? new Date(file.modifiedAt).toLocaleDateString('fr-FR') : 'N/A';
+
+            let trackStatus = '';
+            if (file.hasTrack && file.trackInfo) {
+                trackStatus = `<div class="gpx-file-track-info">📌 Lié à: ${file.trackInfo.title || file.trackInfo.name}</div>`;
+            } else {
+                trackStatus = '<div class="gpx-file-track-info orphan">⚠️ Fichier orphelin (non lié à une trace)</div>';
+            }
+
+            return `
+                <div class="gpx-file-item">
+                    <div class="gpx-file-info">
+                        <div class="gpx-file-name">${file.filename}</div>
+                        <div class="gpx-file-meta">
+                            <span>📦 ${fileSize}</span>
+                            <span>📅 ${modifiedDate}</span>
+                        </div>
+                        ${trackStatus}
+                    </div>
+                    <div class="gpx-file-actions">
+                        <button
+                            class="gpx-file-delete-btn"
+                            data-filename="${file.filename}"
+                            ${file.hasTrack ? 'disabled title="Supprimez d\'abord la trace liée"' : ''}
+                        >
+                            🗑️ Supprimer
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Attach delete event listeners
+        container.querySelectorAll('.gpx-file-delete-btn:not([disabled])').forEach(button => {
+            button.addEventListener('click', () => {
+                const filename = button.dataset.filename;
+                handleDeleteGpxFile(filename);
+            });
+        });
+    } catch (error) {
+        alert('Erreur lors du chargement des fichiers GPX');
+    }
+}
+
+// Format file size in human-readable format
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Handle delete GPX file
+async function handleDeleteGpxFile(filename) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le fichier "${filename}" ?\n\nCette action est irréversible.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/gpx-files/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Fichier supprimé avec succès');
+            await loadAndDisplayGpxFiles();
+        } else {
+            alert(result.error || 'Erreur lors de la suppression du fichier');
+        }
+    } catch (error) {
+        alert('Erreur lors de la suppression du fichier');
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if this is a shared link
@@ -327,6 +423,8 @@ function attachEventListeners() {
             // Load data for the selected tab
             if (targetTab === 'types') {
                 loadAndDisplayTrackTypes();
+            } else if (targetTab === 'gpxFiles') {
+                loadAndDisplayGpxFiles();
             }
         });
     });

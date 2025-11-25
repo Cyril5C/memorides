@@ -1355,6 +1355,88 @@ select {
     gap: 0.5rem;
 }
 
+/* GPX Files List */
+.gpx-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.gpx-file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: var(--bg-color);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    transition: border-color 0.2s;
+}
+
+.gpx-file-item:hover {
+    border-color: var(--primary-color);
+}
+
+.gpx-file-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.gpx-file-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    word-break: break-word;
+}
+
+.gpx-file-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.gpx-file-track-info {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    margin-top: 0.25rem;
+}
+
+.gpx-file-track-info.orphan {
+    color: var(--warning-color, #f59e0b);
+}
+
+.gpx-file-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.gpx-file-delete-btn {
+    padding: 0.5rem 1rem;
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.gpx-file-delete-btn:hover {
+    opacity: 0.9;
+}
+
+.gpx-file-delete-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Settings Tabs */
 .settings-tabs {
     display: flex;
