@@ -316,7 +316,7 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
         }
 
         // Extract metadata from request body
-        const { name, title, comments, type, direction, color, distance, elevation, duration } = req.body;
+        const { name, title, comments, type, direction, color, distance, elevation } = req.body;
 
         // Read GPX file to extract name if title not provided
         let gpxName = null;
@@ -345,8 +345,8 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
                 direction: direction || 'one-way',
                 color: color || '#2563eb',
                 distance: parseFloat(distance) || 0,
-                elevation: parseFloat(elevation) || 0,
-                duration: duration ? parseFloat(duration) : null
+                elevation: parseFloat(elevation) || 0
+                // Duration is calculated dynamically on the client
             }
         });
 

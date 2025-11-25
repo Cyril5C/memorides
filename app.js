@@ -44,7 +44,8 @@ const state = {
     currentFilter: 'all',
     currentView: 'map',
     searchTerm: '',
-    filters: loadFiltersFromStorage() // Load saved filters or use defaults
+    filters: loadFiltersFromStorage(), // Load saved filters or use defaults
+    averageSpeed: loadAverageSpeedFromStorage() // Load saved average speed or use default (17 km/h)
 };
 
 // Load filters from localStorage or use defaults
@@ -75,6 +76,31 @@ function saveFiltersToStorage() {
         console.log('💾 Saved filters to storage');
     } catch (error) {
         console.error('Error saving filters to storage:', error);
+    }
+}
+
+// Load average speed from localStorage or use default
+function loadAverageSpeedFromStorage() {
+    try {
+        const savedSpeed = localStorage.getItem('memorides_average_speed');
+        if (savedSpeed) {
+            const speed = parseFloat(savedSpeed);
+            console.log('📋 Loaded saved average speed:', speed, 'km/h');
+            return speed;
+        }
+    } catch (error) {
+        console.error('Error loading average speed from storage:', error);
+    }
+    return 17; // Default: 17 km/h
+}
+
+// Save average speed to localStorage
+function saveAverageSpeedToStorage(speed) {
+    try {
+        localStorage.setItem('memorides_average_speed', speed.toString());
+        console.log('💾 Saved average speed to storage:', speed, 'km/h');
+    } catch (error) {
+        console.error('Error saving average speed to storage:', error);
     }
 }
 
@@ -310,6 +336,24 @@ function attachEventListeners() {
         });
     });
 
+    // Average speed setting
+    const averageSpeedInput = document.getElementById('averageSpeedInput');
+    if (averageSpeedInput) {
+        // Initialize with saved value
+        averageSpeedInput.value = state.averageSpeed;
+
+        // Save on change
+        averageSpeedInput.addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            if (speed > 0 && speed <= 50) {
+                state.averageSpeed = speed;
+                saveAverageSpeedToStorage(speed);
+                // Refresh display to update durations
+                renderTracks();
+            }
+        });
+    }
+
     // Track types management
     document.getElementById('addTrackTypeBtn').addEventListener('click', showAddTrackTypeForm);
     document.getElementById('closeTrackTypeFormModal').addEventListener('click', closeTrackTypeFormModal);
@@ -366,7 +410,6 @@ async function handleGPXUpload(event) {
                 const color = '#2563eb'; // Blue color for all tracks
                 const distance = calculateDistance(gpxData.points);
                 const elevation = calculateElevation(gpxData.points);
-                const duration = calculateDuration(gpxData.points, distance);
                 const direction = detectDirection(gpxData.points);
 
                 // Upload file with metadata to server
@@ -378,7 +421,7 @@ async function handleGPXUpload(event) {
                 formData.append('color', color);
                 formData.append('distance', distance.toString());
                 formData.append('elevation', elevation.toString());
-                formData.append('duration', duration.toString());
+                // Duration is calculated dynamically on the client based on distance and average speed
 
                 const response = await fetch(`${API_BASE_URL}/gpx/upload`, {
                     method: 'POST',
@@ -554,13 +597,13 @@ function calculateElevation(points) {
     return elevationGain;
 }
 
-// Calculate duration based on distance and average speed (17 km/h)
-function calculateDuration(points, distance) {
+// Calculate duration based on distance and average speed
+function calculateDuration(distance) {
     // Distance from calculateDistance() is in meters, need to convert to km
     const distanceKm = distance ? distance / 1000 : 0;
 
-    // Average speed: 17 km/h
-    const averageSpeed = 17; // km/h
+    // Use average speed from state (configurable in settings)
+    const averageSpeed = state.averageSpeed || 17; // km/h
 
     // Duration = Distance / Speed (result in hours, convert to minutes)
     const durationMinutes = (distanceKm / averageSpeed) * 60;
@@ -1228,7 +1271,9 @@ function showTrackInfoModal(track, isSharedLink = false) {
     document.getElementById('trackInfoTitleText').textContent = `${typeIcon} ${displayTitle}`;
     document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
     document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
-    document.getElementById('trackInfoDuration').textContent = formatDuration(track.duration);
+    // Calculate duration dynamically based on distance and average speed
+    const duration = track.distance ? calculateDuration(track.distance * 1000) : 0;
+    document.getElementById('trackInfoDuration').textContent = formatDuration(duration);
     // Display completion status
     if (track.completedAt) {
         const date = new Date(track.completedAt);
@@ -2530,10 +2575,10 @@ function renderListView() {
                         <div class="track-card-stat-label">Dénivelé</div>
                         <div class="track-card-stat-value">${formatElevation(track.elevation)}</div>
                     </div>
-                    ${track.duration ? `
+                    ${track.distance ? `
                     <div class="track-card-stat">
                         <div class="track-card-stat-label">Durée</div>
-                        <div class="track-card-stat-value">${formatDuration(track.duration)}</div>
+                        <div class="track-card-stat-value">${formatDuration(calculateDuration(track.distance * 1000))}</div>
                     </div>
                     ` : ''}
                     ${track.photos ? `

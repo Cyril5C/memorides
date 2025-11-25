@@ -232,12 +232,26 @@
 
             <!-- Tabs -->
             <div class="settings-tabs">
-                <button class="settings-tab active" data-tab="labels">Libellés</button>
+                <button class="settings-tab active" data-tab="general">Général</button>
+                <button class="settings-tab" data-tab="labels">Libellés</button>
                 <button class="settings-tab" data-tab="types">Types de trace</button>
             </div>
 
+            <!-- General Tab -->
+            <div id="generalTab" class="settings-tab-content active">
+                <div style="padding: 1rem;">
+                    <div class="form-group">
+                        <label for="averageSpeedInput">Vitesse moyenne (km/h)</label>
+                        <input type="number" id="averageSpeedInput" min="1" max="50" step="0.5" value="17" style="width: 100px;">
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 0.5rem;">
+                            Utilisée pour calculer la durée estimée des traces
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Labels Tab -->
-            <div id="labelsTab" class="settings-tab-content active">
+            <div id="labelsTab" class="settings-tab-content hidden">
                 <div id="labelsManagementList" class="labels-management-list">
                     <!-- Labels will be displayed here -->
                 </div>
@@ -343,7 +357,7 @@
     </div>
 
     <!-- Custom JS -->
-    <script src="app.js?v=20251124-08"></script>
+    <script src="app.js?v=20251125-01"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
