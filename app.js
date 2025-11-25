@@ -556,8 +556,8 @@ function calculateElevation(points) {
 
 // Calculate duration based on distance and average speed (17 km/h)
 function calculateDuration(points, distance) {
-    // If distance is provided, use it; otherwise calculate it
-    const distanceKm = distance ? distance / 1000 : calculateDistance(points) / 1000;
+    // Distance from calculateDistance() is in meters, need to convert to km
+    const distanceKm = distance ? distance / 1000 : 0;
 
     // Average speed: 17 km/h
     const averageSpeed = 17; // km/h

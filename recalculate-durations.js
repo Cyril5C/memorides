@@ -20,8 +20,8 @@ async function recalculateDurations() {
                 continue;
             }
 
-            // Calculate duration: Distance (m) / 1000 / 17 km/h * 60 min
-            const distanceKm = track.distance / 1000;
+            // Calculate duration: Distance (already in km) / 17 km/h * 60 min
+            const distanceKm = track.distance; // Distance is already in km in database
             const durationMinutes = (distanceKm / averageSpeed) * 60;
 
             // Update track
