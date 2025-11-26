@@ -3255,7 +3255,7 @@ function createShareLinkElement(link) {
                 <button class="btn btn-small btn-danger share-link-delete-btn" data-link-id="${link.id}">🗑️ Supprimer</button>
             </div>
         </div>
-        <div class="share-link-url">${shareUrl}</div>
+        <a href="${shareUrl}" target="_blank" class="share-link-url" style="color: var(--primary-color); text-decoration: none;">${shareUrl}</a>
         <div class="share-link-info">
             <span>Créé le ${new Date(link.createdAt).toLocaleDateString('fr-FR')}</span>
             <span>${link.isExpired ? 'Expiré' : `Expire dans ${daysLeft} jour(s)`}</span>
@@ -3422,7 +3422,7 @@ function createAllShareLinkElement(link) {
                 <button class="btn btn-small btn-danger all-share-link-delete-btn" data-link-id="${link.id}">🗑️ Supprimer</button>
             </div>
         </div>
-        <div class="share-link-url">${shareUrl}</div>
+        <a href="${shareUrl}" target="_blank" class="share-link-url" style="color: var(--primary-color); text-decoration: none;">${shareUrl}</a>
         <div class="share-link-info">
             <span>Créé le ${new Date(link.createdAt).toLocaleDateString('fr-FR')}</span>
             <span>${link.isExpired ? 'Expiré' : `Expire dans ${daysLeft} jour(s)`}</span>

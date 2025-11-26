@@ -396,9 +396,9 @@
                 modalImg.src = allPhotos[currentPhotoIndex].path;
             }
 
-            // Update navigation buttons state
-            prevBtn.disabled = currentPhotoIndex === 0;
-            nextBtn.disabled = currentPhotoIndex === allPhotos.length - 1;
+            // Update navigation buttons state (always enabled for circular navigation)
+            prevBtn.disabled = false;
+            nextBtn.disabled = false;
 
             // Hide navigation buttons if only one photo
             if (allPhotos.length <= 1) {
@@ -412,8 +412,9 @@
 
         function navigatePhoto(direction) {
             currentPhotoIndex += direction;
-            if (currentPhotoIndex < 0) currentPhotoIndex = 0;
-            if (currentPhotoIndex >= allPhotos.length) currentPhotoIndex = allPhotos.length - 1;
+            // Circular navigation: wrap around to first/last photo
+            if (currentPhotoIndex < 0) currentPhotoIndex = allPhotos.length - 1;
+            if (currentPhotoIndex >= allPhotos.length) currentPhotoIndex = 0;
             showCurrentPhoto();
         }
 
