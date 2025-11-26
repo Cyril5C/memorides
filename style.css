@@ -2041,3 +2041,51 @@ select {
     color: #6b7280;
     font-weight: 400;
 }
+
+/* Share Links Styles */
+.share-link-item {
+    background: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.share-link-item.expired {
+    opacity: 0.6;
+}
+
+.share-link-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.share-link-url {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: var(--primary-color);
+    word-break: break-all;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.share-link-info {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.share-link-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.share-link-actions button {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}

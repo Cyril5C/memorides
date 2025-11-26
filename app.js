@@ -358,6 +358,13 @@ function attachEventListeners() {
         showLabelsManagementModal();
     });
 
+    // Menu Share Links
+    document.getElementById('menuShareLinks').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeMenuFunc();
+        showAllShareLinksModal();
+    });
+
     // Menu Export Human-readable
     document.getElementById('menuExportHuman').addEventListener('click', async (e) => {
         e.preventDefault();
@@ -474,6 +481,15 @@ function attachEventListeners() {
     });
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
+
+    // Share modal
+    document.getElementById('closeShareModal').addEventListener('click', closeShareModal);
+    document.getElementById('shareModal').addEventListener('click', (e) => {
+        if (e.target.id === 'shareModal') {
+            closeShareModal();
+        }
+    });
+    document.getElementById('createShareLinkBtn').addEventListener('click', createShareLink);
 
     // Distance sliders
     const minDistanceSlider = document.getElementById('minDistance');
@@ -3166,26 +3182,303 @@ async function updateTrackType(id, value, label, icon, order = 0) {
     }
 }
 
-// Share track - generate and copy shareable link
-function shareTrack(trackId) {
+// Share track modal state
+let currentShareTrackId = null;
+
+// Share track - open share modal
+async function shareTrack(trackId) {
     const track = state.tracks.find(t => t.id === trackId);
     if (!track) {
         alert('Trace introuvable');
         return;
     }
 
-    // Generate shareable URL with track ID as query parameter
-    const shareUrl = `${window.location.origin}${window.location.pathname}?track=${trackId}`;
+    currentShareTrackId = trackId;
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(shareUrl).then(() => {
-        alert('Lien copié dans le presse-papier !\n\n' + shareUrl);
-    }).catch(err => {
-        console.error('Error copying to clipboard:', err);
-        // Fallback: show URL in alert for manual copy
-        prompt('Copiez ce lien pour partager la trace:', shareUrl);
-    });
+    // Show modal
+    const modal = document.getElementById('shareModal');
+    modal.classList.remove('hidden');
+
+    // Load existing share links
+    await loadShareLinks(trackId);
 }
+
+// Load share links for a track
+async function loadShareLinks(trackId) {
+    const loadingEl = document.getElementById('shareLinksLoading');
+    const contentEl = document.getElementById('shareLinksContent');
+    const listEl = document.getElementById('shareLinksList');
+
+    loadingEl.style.display = 'block';
+    contentEl.style.display = 'none';
+
+    try {
+        const response = await fetch(`/api/tracks/${trackId}/share-links`);
+        const data = await response.json();
+
+        listEl.innerHTML = '';
+
+        if (data.shareLinks && data.shareLinks.length > 0) {
+            data.shareLinks.forEach(link => {
+                const linkEl = createShareLinkElement(link);
+                listEl.appendChild(linkEl);
+            });
+            contentEl.style.display = 'block';
+        } else {
+            listEl.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Aucun lien de partage actif</p>';
+            contentEl.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading share links:', error);
+        listEl.innerHTML = '<p style="color: var(--error-color); text-align: center;">Erreur lors du chargement des liens</p>';
+        contentEl.style.display = 'block';
+    } finally {
+        loadingEl.style.display = 'none';
+    }
+}
+
+// Create share link element
+function createShareLinkElement(link) {
+    const div = document.createElement('div');
+    div.className = `share-link-item${link.isExpired ? ' expired' : ''}`;
+
+    const shareUrl = `${window.location.origin}/share/${link.token}`;
+    const expiryDate = new Date(link.expiresAt);
+    const now = new Date();
+    const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+    div.innerHTML = `
+        <div class="share-link-header">
+            <span style="font-weight: 600;">${link.isExpired ? '⚠️ Expiré' : '✅ Actif'}</span>
+            <div class="share-link-actions">
+                <button class="btn btn-small btn-secondary share-link-copy-btn" data-url="${shareUrl}">📋 Copier</button>
+                <button class="btn btn-small btn-danger share-link-delete-btn" data-link-id="${link.id}">🗑️ Supprimer</button>
+            </div>
+        </div>
+        <div class="share-link-url">${shareUrl}</div>
+        <div class="share-link-info">
+            <span>Créé le ${new Date(link.createdAt).toLocaleDateString('fr-FR')}</span>
+            <span>${link.isExpired ? 'Expiré' : `Expire dans ${daysLeft} jour(s)`}</span>
+            <span>${link.viewCount || 0} vue(s)</span>
+        </div>
+    `;
+
+    // Add event listeners
+    const copyBtn = div.querySelector('.share-link-copy-btn');
+    const deleteBtn = div.querySelector('.share-link-delete-btn');
+
+    copyBtn.addEventListener('click', () => copyShareLink(shareUrl));
+    deleteBtn.addEventListener('click', () => deleteShareLink(link.id));
+
+    return div;
+}
+
+// Copy share link to clipboard
+async function copyShareLink(url) {
+    try {
+        await navigator.clipboard.writeText(url);
+        alert('Lien copié dans le presse-papier !\n\n' + url);
+    } catch (err) {
+        console.error('Error copying to clipboard:', err);
+        prompt('Copiez ce lien pour partager la trace:', url);
+    }
+}
+
+// Delete share link
+async function deleteShareLink(linkId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce lien de partage ?')) {
+        return;
+    }
+
+    console.log('Deleting share link with ID:', linkId);
+
+    try {
+        const response = await fetch(`/api/share-links/${linkId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        console.log('Delete response:', response.status, data);
+
+        if (response.ok) {
+            console.log('Share link deleted successfully');
+            await loadShareLinks(currentShareTrackId);
+        } else {
+            console.error('Failed to delete share link:', data);
+            alert(`Erreur lors de la suppression du lien: ${data.error || 'Erreur inconnue'}`);
+        }
+    } catch (error) {
+        console.error('Error deleting share link:', error);
+        alert('Erreur lors de la suppression du lien: ' + error.message);
+    }
+}
+
+// Create new share link
+async function createShareLink() {
+    if (!currentShareTrackId) return;
+
+    const btn = document.getElementById('createShareLinkBtn');
+    btn.disabled = true;
+    btn.textContent = 'Création...';
+
+    try {
+        const response = await fetch('/api/share-links', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ trackId: currentShareTrackId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            await loadShareLinks(currentShareTrackId);
+            const shareUrl = `${window.location.origin}${data.url}`;
+            await copyShareLink(shareUrl);
+        } else {
+            alert('Erreur lors de la création du lien');
+        }
+    } catch (error) {
+        console.error('Error creating share link:', error);
+        alert('Erreur lors de la création du lien');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Créer un nouveau lien';
+    }
+}
+
+// Close share modal
+function closeShareModal() {
+    document.getElementById('shareModal').classList.add('hidden');
+    currentShareTrackId = null;
+}
+
+// ========== ALL SHARE LINKS MODAL ==========
+
+// Show all share links modal
+async function showAllShareLinksModal() {
+    const modal = document.getElementById('allShareLinksModal');
+    modal.classList.remove('hidden');
+    await loadAllShareLinks();
+}
+
+// Load all share links
+async function loadAllShareLinks() {
+    const loadingEl = document.getElementById('allShareLinksLoading');
+    const contentEl = document.getElementById('allShareLinksContent');
+    const emptyEl = document.getElementById('allShareLinksEmpty');
+    const listEl = document.getElementById('allShareLinksList');
+
+    loadingEl.style.display = 'block';
+    contentEl.style.display = 'none';
+    emptyEl.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/share-links');
+        const data = await response.json();
+
+        loadingEl.style.display = 'none';
+
+        if (!data.shareLinks || data.shareLinks.length === 0) {
+            emptyEl.style.display = 'block';
+            return;
+        }
+
+        contentEl.style.display = 'block';
+        listEl.innerHTML = '';
+
+        data.shareLinks.forEach(link => {
+            const linkEl = createAllShareLinkElement(link);
+            listEl.appendChild(linkEl);
+        });
+    } catch (error) {
+        console.error('Error loading all share links:', error);
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        emptyEl.innerHTML = '<p style="color: var(--error-color);">Erreur lors du chargement des liens.</p>';
+    }
+}
+
+// Create share link element for all links view
+function createAllShareLinkElement(link) {
+    const div = document.createElement('div');
+    div.className = `share-link-item${link.isExpired ? ' expired' : ''}`;
+    div.style.marginBottom = '1rem';
+
+    const shareUrl = `${window.location.origin}/share/${link.token}`;
+    const expiryDate = new Date(link.expiresAt);
+    const now = new Date();
+    const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+    div.innerHTML = `
+        <div class="share-link-header">
+            <div>
+                <span style="font-weight: 600;">${link.isExpired ? '⚠️ Expiré' : '✅ Actif'}</span>
+                <span style="margin-left: 1rem; color: var(--text-secondary);">${link.track.name || link.track.filename}</span>
+            </div>
+            <div class="share-link-actions">
+                <button class="btn btn-small btn-secondary all-share-link-copy-btn" data-url="${shareUrl}">📋 Copier</button>
+                <button class="btn btn-small btn-danger all-share-link-delete-btn" data-link-id="${link.id}">🗑️ Supprimer</button>
+            </div>
+        </div>
+        <div class="share-link-url">${shareUrl}</div>
+        <div class="share-link-info">
+            <span>Créé le ${new Date(link.createdAt).toLocaleDateString('fr-FR')}</span>
+            <span>${link.isExpired ? 'Expiré' : `Expire dans ${daysLeft} jour(s)`}</span>
+            <span>${link.viewCount || 0} vue(s)</span>
+            <span>${link.track.distance ? `${link.track.distance.toFixed(1)} km` : ''}</span>
+        </div>
+    `;
+
+    // Add event listeners
+    const copyBtn = div.querySelector('.all-share-link-copy-btn');
+    const deleteBtn = div.querySelector('.all-share-link-delete-btn');
+
+    copyBtn.addEventListener('click', () => copyShareLink(shareUrl));
+    deleteBtn.addEventListener('click', async () => {
+        await deleteShareLinkFromAll(link.id);
+    });
+
+    return div;
+}
+
+// Delete share link from all links view
+async function deleteShareLinkFromAll(linkId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce lien de partage ?')) {
+        return;
+    }
+
+    console.log('Deleting share link with ID:', linkId);
+
+    try {
+        const response = await fetch(`/api/share-links/${linkId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        console.log('Delete response:', response.status, data);
+
+        if (response.ok) {
+            console.log('Share link deleted successfully');
+            await loadAllShareLinks();
+        } else {
+            console.error('Failed to delete share link:', data);
+            alert(`Erreur lors de la suppression du lien: ${data.error || 'Erreur inconnue'}`);
+        }
+    } catch (error) {
+        console.error('Error deleting share link:', error);
+        alert('Erreur lors de la suppression du lien: ' + error.message);
+    }
+}
+
+// Close all share links modal
+function closeAllShareLinksModal() {
+    document.getElementById('allShareLinksModal').classList.add('hidden');
+}
+
+// Setup close button for all share links modal
+document.getElementById('closeAllShareLinksModal').addEventListener('click', closeAllShareLinksModal);
 
 // Check if URL contains a track ID and open it automatically
 function checkForSharedTrack() {

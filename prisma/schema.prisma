@@ -27,6 +27,7 @@ model Track {
   updatedAt    DateTime  @updatedAt
   photos       Photo[]   // Photos associated with this track
   labels       TrackLabel[]  // Labels associated with this track
+  shareLinks   ShareLink[]  // Share links for this track
 
   @@index([createdAt])
   @@index([type])
@@ -80,4 +81,20 @@ model TrackType {
   updatedAt DateTime @updatedAt
 
   @@index([order])
+}
+
+model ShareLink {
+  id        String   @id @default(cuid())
+  token     String   @unique  // Unique token for the share link
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime // Automatically set to createdAt + 15 days
+  viewCount Int      @default(0) // Number of times the link was accessed
+  active    Boolean  @default(true) // Can be manually deactivated
+
+  @@index([token])
+  @@index([trackId])
+  @@index([expiresAt])
+  @@index([active])
 }

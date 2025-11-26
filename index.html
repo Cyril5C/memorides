@@ -87,6 +87,10 @@
                         <span class="menu-icon">⚙️</span>
                         <span>Configuration</span>
                     </a>
+                    <a href="#" id="menuShareLinks" class="menu-item">
+                        <span class="menu-icon">🔗</span>
+                        <span>Liens partagés</span>
+                    </a>
                     <a href="#" id="menuExportHuman" class="menu-item">
                         <span class="menu-icon">👤</span>
                         <span>Export pour un humain</span>
@@ -396,6 +400,55 @@
             <div class="form-actions">
                 <button type="button" class="btn btn-primary" id="applyFilters">Appliquer</button>
                 <button type="button" class="btn btn-secondary" id="resetFilters">Réinitialiser</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="shareModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" id="closeShareModal"></button>
+            <h3>Partager la trace</h3>
+
+            <div class="share-info">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                    Créez un lien de partage éphémère pour cette trace. Le lien sera valide pendant 15 jours.
+                </p>
+            </div>
+
+            <div id="shareLinksContainer" style="margin-top: 1.5rem;">
+                <div id="shareLinksLoading" style="text-align: center; color: var(--text-secondary);">
+                    Chargement...
+                </div>
+                <div id="shareLinksContent" style="display: none;">
+                    <h4 style="margin-bottom: 1rem;">Liens actifs:</h4>
+                    <div id="shareLinksList"></div>
+                </div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 1.5rem;">
+                <button type="button" class="btn btn-primary" id="createShareLinkBtn">Créer un nouveau lien</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Share Links Modal -->
+    <div id="allShareLinksModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 900px;">
+            <button class="modal-close" id="closeAllShareLinksModal"></button>
+            <h3>Tous les liens partagés</h3>
+
+            <div id="allShareLinksContainer" style="margin-top: 1.5rem;">
+                <div id="allShareLinksLoading" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 1rem;">Chargement...</p>
+                </div>
+                <div id="allShareLinksContent" style="display: none;">
+                    <div id="allShareLinksList"></div>
+                </div>
+                <div id="allShareLinksEmpty" style="display: none; text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <p>Aucun lien partagé pour le moment.</p>
+                </div>
             </div>
         </div>
     </div>

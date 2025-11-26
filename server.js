@@ -232,6 +232,109 @@ app.get('/robots.txt', (req, res) => {
     res.sendFile(path.join(__dirname, 'robots.txt'));
 });
 
+// ============= PUBLIC SHARE ROUTE (NO AUTH REQUIRED) =============
+
+// Serve the public share page (no authentication required)
+app.get('/share/:token', (req, res) => {
+    res.sendFile(path.join(__dirname, 'share.html'));
+});
+
+// Public route to access shared track (no authentication required)
+app.get('/api/share/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        // Find share link by token
+        const shareLink = await prisma.shareLink.findUnique({
+            where: { token },
+            include: {
+                track: {
+                    include: {
+                        labels: {
+                            include: {
+                                label: true
+                            }
+                        },
+                        photos: true
+                    }
+                }
+            }
+        });
+
+        if (!shareLink) {
+            return res.status(404).json({ error: 'Share link not found' });
+        }
+
+        // Check if link is expired or inactive
+        const now = new Date();
+        if (!shareLink.active || shareLink.expiresAt < now) {
+            return res.status(410).json({ error: 'This share link has expired' });
+        }
+
+        // Increment view count
+        await prisma.shareLink.update({
+            where: { id: shareLink.id },
+            data: { viewCount: shareLink.viewCount + 1 }
+        });
+
+        // Return track data
+        res.json({
+            track: shareLink.track,
+            shareInfo: {
+                expiresAt: shareLink.expiresAt,
+                viewCount: shareLink.viewCount + 1
+            }
+        });
+    } catch (error) {
+        console.error('Error accessing shared track:', error);
+        res.status(500).json({ error: 'Failed to access shared track' });
+    }
+});
+
+// Serve GPX file for shared track (no authentication required)
+app.get('/api/share/:token/gpx', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        // Find share link
+        const shareLink = await prisma.shareLink.findUnique({
+            where: { token },
+            include: { track: true }
+        });
+
+        if (!shareLink) {
+            return res.status(404).json({ error: 'Share link not found' });
+        }
+
+        // Check if link is expired or inactive
+        const now = new Date();
+        if (!shareLink.active || shareLink.expiresAt < now) {
+            return res.status(410).json({ error: 'This share link has expired' });
+        }
+
+        // Serve GPX file
+        const gpxFilePath = path.join(__dirname, 'uploads', 'gpx', shareLink.track.filename);
+
+        if (!fs.existsSync(gpxFilePath)) {
+            return res.status(404).json({ error: 'GPX file not found' });
+        }
+
+        res.setHeader('Content-Type', 'application/gpx+xml');
+        res.sendFile(gpxFilePath);
+    } catch (error) {
+        console.error('Error serving shared GPX:', error);
+        res.status(500).json({ error: 'Failed to serve GPX file' });
+    }
+});
+
+// Create uploads directories variables (needed before requireAuth for public access)
+const uploadsDir = path.join(__dirname, 'uploads');
+const gpxDir = path.join(uploadsDir, 'gpx');
+const photosDir = path.join(uploadsDir, 'photos');
+
+// Serve uploaded files (no authentication required - needed for shared links)
+app.use('/uploads', express.static(uploadsDir));
+
 // Protect all other routes
 app.use(requireAuth);
 
@@ -247,11 +350,6 @@ app.get('/sw.js', (req, res) => {
 
 // Serve static files from root directory
 app.use(express.static(__dirname));
-
-// Create uploads directories if they don't exist
-const uploadsDir = path.join(__dirname, 'uploads');
-const gpxDir = path.join(uploadsDir, 'gpx');
-const photosDir = path.join(uploadsDir, 'photos');
 
 // Initialize directories asynchronously (will be called during server startup)
 async function ensureDirectories() {
@@ -802,9 +900,6 @@ app.delete('/api/photos/:filename',
         }
     }
 );
-
-// Serve uploaded files
-app.use('/uploads', express.static(uploadsDir));
 
 // Admin list files endpoint (temporary)
 app.get('/api/admin/list-files', async (_req, res) => {
@@ -1469,6 +1564,152 @@ app.post('/api/admin/cleanup-orphaned-tracks', async (req, res) => {
     } catch (error) {
         console.error('Error cleaning orphaned tracks:', error);
         res.status(500).json({ error: 'Failed to cleanup orphaned tracks' });
+    }
+});
+
+// ============= SHARE LINKS ENDPOINTS =============
+
+// Create a share link for a track
+app.post('/api/share-links', async (req, res) => {
+    try {
+        const { trackId } = req.body;
+
+        if (!trackId) {
+            return res.status(400).json({ error: 'Track ID is required' });
+        }
+
+        // Verify track exists
+        const track = await prisma.track.findUnique({
+            where: { id: trackId }
+        });
+
+        if (!track) {
+            return res.status(404).json({ error: 'Track not found' });
+        }
+
+        // Generate unique token
+        const crypto = require('crypto');
+        const token = crypto.randomBytes(16).toString('hex');
+
+        // Set expiration date to 15 days from now
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 15);
+
+        // Create share link
+        const shareLink = await prisma.shareLink.create({
+            data: {
+                token,
+                trackId,
+                expiresAt
+            },
+            include: {
+                track: {
+                    select: {
+                        id: true,
+                        name: true,
+                        filename: true
+                    }
+                }
+            }
+        });
+
+        res.json({
+            success: true,
+            shareLink,
+            url: `/share/${token}`
+        });
+    } catch (error) {
+        console.error('Error creating share link:', error);
+        res.status(500).json({ error: 'Failed to create share link' });
+    }
+});
+
+// List all share links (admin only)
+app.get('/api/share-links', async (req, res) => {
+    try {
+        const shareLinks = await prisma.shareLink.findMany({
+            include: {
+                track: {
+                    select: {
+                        id: true,
+                        name: true,
+                        filename: true,
+                        distance: true,
+                        elevation: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        // Add expiration status to each link
+        const now = new Date();
+        const enrichedLinks = shareLinks.map(link => ({
+            ...link,
+            isExpired: link.expiresAt < now || !link.active
+        }));
+
+        res.json({ shareLinks: enrichedLinks });
+    } catch (error) {
+        console.error('Error fetching share links:', error);
+        res.status(500).json({ error: 'Failed to fetch share links' });
+    }
+});
+
+// Delete a share link (admin only)
+app.delete('/api/share-links/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        console.log('Attempting to delete share link with ID:', id);
+
+        // Check if share link exists
+        const existingLink = await prisma.shareLink.findUnique({
+            where: { id }
+        });
+
+        if (!existingLink) {
+            console.log('Share link not found:', id);
+            return res.status(404).json({ error: 'Share link not found' });
+        }
+
+        // Delete the share link
+        await prisma.shareLink.delete({
+            where: { id }
+        });
+
+        console.log('Successfully deleted share link:', id);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting share link:', error);
+        console.error('Error details:', error.message);
+        res.status(500).json({ error: 'Failed to delete share link', details: error.message });
+    }
+});
+
+// Get share links for a specific track
+app.get('/api/tracks/:trackId/share-links', async (req, res) => {
+    try {
+        const { trackId } = req.params;
+
+        const shareLinks = await prisma.shareLink.findMany({
+            where: { trackId },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Add expiration status
+        const now = new Date();
+        const enrichedLinks = shareLinks.map(link => ({
+            ...link,
+            isExpired: link.expiresAt < now || !link.active
+        }));
+
+        res.json({ shareLinks: enrichedLinks });
+    } catch (error) {
+        console.error('Error fetching track share links:', error);
+        res.status(500).json({ error: 'Failed to fetch share links' });
     }
 });
 

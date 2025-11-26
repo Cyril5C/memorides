@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trace partagée - Memorides</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #2563eb;
+        }
+
+        .header .expiry {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 200px);
+        }
+
+        .info-panel {
+            background: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .error {
+            padding: 2rem;
+            text-align: center;
+            color: #ef4444;
+        }
+
+        .loading {
+            padding: 2rem;
+            text-align: center;
+            color: #666;
+        }
+
+        .download-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .download-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .photos-section {
+            background: white;
+            padding: 1.5rem 2rem;
+            margin-top: 1rem;
+        }
+
+        .photos-section h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .photo-item {
+            cursor: pointer;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .photo-modal.active {
+            display: flex;
+        }
+
+        .photo-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .photo-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .photo-modal-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .photo-modal-nav:hover {
+            background: #f0f0f0;
+        }
+
+        .photo-modal-nav.prev {
+            left: 20px;
+        }
+
+        .photo-modal-nav.next {
+            right: 20px;
+        }
+
+        .photo-modal-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            #map {
+                height: calc(100vh - 280px);
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .photos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Memorides - Trace partagée</h1>
+        <div class="expiry" id="expiry"></div>
+    </div>
+
+    <div id="loading" class="loading">Chargement de la trace...</div>
+    <div id="error" class="error" style="display: none;"></div>
+
+    <div id="map" style="display: none;"></div>
+
+    <div class="info-panel" id="info-panel" style="display: none;">
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Nom</div>
+                <div class="info-value" id="track-name"></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Distance</div>
+                <div class="info-value" id="track-distance"></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Dénivelé</div>
+                <div class="info-value" id="track-elevation"></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Type</div>
+                <div class="info-value" id="track-type"></div>
+            </div>
+            <div class="info-item">
+                <a href="#" id="download-gpx" class="download-btn">Télécharger GPX</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photos Section -->
+    <div class="photos-section" id="photos-section" style="display: none;">
+        <h3>📸 Photos</h3>
+        <div class="photos-grid" id="photos-grid"></div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div class="photo-modal" id="photo-modal">
+        <button class="photo-modal-close" id="photo-modal-close-btn">×</button>
+        <button class="photo-modal-nav prev" id="photo-modal-prev">‹</button>
+        <button class="photo-modal-nav next" id="photo-modal-next">›</button>
+        <img id="modal-photo" src="" alt="Photo">
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const token = window.location.pathname.split('/').pop();
+        let map;
+        let allPhotos = [];
+        let currentPhotoIndex = 0;
+
+        const typeIcons = {
+            'hiking': '🥾',
+            'cycling': '🚴',
+            'gravel': '🚵',
+            'road': '🚴'
+        };
+
+        const typeLabels = {
+            'hiking': 'Randonnée',
+            'cycling': 'Vélo route',
+            'gravel': 'Gravel',
+            'road': 'Route'
+        };
+
+        async function loadSharedTrack() {
+            try {
+                const response = await fetch(`/api/share/${token}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to load track');
+                }
+
+                const data = await response.json();
+                const track = data.track;
+                const shareInfo = data.shareInfo;
+
+                // Hide loading, show map
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('map').style.display = 'block';
+                document.getElementById('info-panel').style.display = 'block';
+
+                // Display expiry info
+                const expiryDate = new Date(shareInfo.expiresAt);
+                document.getElementById('expiry').textContent = `Expire le ${expiryDate.toLocaleDateString('fr-FR')} | ${shareInfo.viewCount} vues`;
+
+                // Display track info
+                document.getElementById('track-name').textContent = track.title || track.name;
+                document.getElementById('track-distance').textContent = `${track.distance.toFixed(2)} km`;
+                document.getElementById('track-elevation').textContent = `${Math.round(track.elevation)} m`;
+                document.getElementById('track-type').textContent = `${typeIcons[track.type] || ''} ${typeLabels[track.type] || track.type}`;
+
+                // Setup download link
+                document.getElementById('download-gpx').href = `/api/share/${token}/gpx`;
+                document.getElementById('download-gpx').download = track.filename;
+
+                // Initialize map
+                map = L.map('map').setView([46.5, 2.5], 6);
+
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                // Load and display GPX
+                loadGPX(token, track);
+
+                // Display photos if available
+                if (track.photos && track.photos.length > 0) {
+                    displayPhotos(track.photos);
+                }
+
+            } catch (error) {
+                console.error('Error loading shared track:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = error.message === 'This share link has expired'
+                    ? 'Ce lien de partage a expiré.'
+                    : 'Impossible de charger la trace.';
+            }
+        }
+
+        function displayPhotos(photos) {
+            const photosSection = document.getElementById('photos-section');
+            const photosGrid = document.getElementById('photos-grid');
+
+            if (photos.length === 0) return;
+
+            // Store all photos globally for navigation
+            allPhotos = photos;
+
+            photosSection.style.display = 'block';
+            photosGrid.innerHTML = '';
+
+            photos.forEach((photo, index) => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                photoItem.onclick = () => openPhotoModal(index);
+
+                const img = document.createElement('img');
+                img.src = photo.path;
+                img.alt = photo.name;
+                img.loading = 'lazy';
+
+                photoItem.appendChild(img);
+                photosGrid.appendChild(photoItem);
+
+                // Add photo marker to map if it has coordinates
+                if (photo.latitude && photo.longitude) {
+                    const photoMarker = L.marker([photo.latitude, photo.longitude], {
+                        icon: L.divIcon({
+                            html: '<div style="background: white; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #2563eb; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">📷</div>',
+                            className: '',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        })
+                    }).addTo(map);
+
+                    photoMarker.on('click', () => openPhotoModal(index));
+                }
+            });
+        }
+
+        function openPhotoModal(photoIndex) {
+            currentPhotoIndex = photoIndex;
+            showCurrentPhoto();
+            document.getElementById('photo-modal').classList.add('active');
+        }
+
+        function showCurrentPhoto() {
+            const modalImg = document.getElementById('modal-photo');
+            const prevBtn = document.getElementById('photo-modal-prev');
+            const nextBtn = document.getElementById('photo-modal-next');
+
+            if (allPhotos.length > 0 && currentPhotoIndex >= 0 && currentPhotoIndex < allPhotos.length) {
+                modalImg.src = allPhotos[currentPhotoIndex].path;
+            }
+
+            // Update navigation buttons state
+            prevBtn.disabled = currentPhotoIndex === 0;
+            nextBtn.disabled = currentPhotoIndex === allPhotos.length - 1;
+
+            // Hide navigation buttons if only one photo
+            if (allPhotos.length <= 1) {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+            } else {
+                prevBtn.style.display = 'flex';
+                nextBtn.style.display = 'flex';
+            }
+        }
+
+        function navigatePhoto(direction) {
+            currentPhotoIndex += direction;
+            if (currentPhotoIndex < 0) currentPhotoIndex = 0;
+            if (currentPhotoIndex >= allPhotos.length) currentPhotoIndex = allPhotos.length - 1;
+            showCurrentPhoto();
+        }
+
+        function closePhotoModal() {
+            const modal = document.getElementById('photo-modal');
+            modal.classList.remove('active');
+        }
+
+        // Close modal on close button click
+        document.getElementById('photo-modal-close-btn').addEventListener('click', closePhotoModal);
+
+        // Navigation buttons
+        document.getElementById('photo-modal-prev').addEventListener('click', () => navigatePhoto(-1));
+        document.getElementById('photo-modal-next').addEventListener('click', () => navigatePhoto(1));
+
+        // Close modal on click outside the image
+        document.getElementById('photo-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'photo-modal') {
+                closePhotoModal();
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('photo-modal');
+            if (!modal.classList.contains('active')) return;
+
+            if (e.key === 'ArrowLeft') {
+                navigatePhoto(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigatePhoto(1);
+            } else if (e.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
+
+        async function loadGPX(token, track) {
+            try {
+                const response = await fetch(`/api/share/${token}/gpx`);
+                const gpxText = await response.text();
+
+                // Parse GPX
+                const parser = new DOMParser();
+                const gpxDoc = parser.parseFromString(gpxText, 'text/xml');
+
+                // Extract coordinates
+                const trkpts = gpxDoc.querySelectorAll('trkpt');
+                const coordinates = [];
+
+                trkpts.forEach(pt => {
+                    const lat = parseFloat(pt.getAttribute('lat'));
+                    const lon = parseFloat(pt.getAttribute('lon'));
+                    coordinates.push([lat, lon]);
+                });
+
+                if (coordinates.length === 0) {
+                    throw new Error('No coordinates found in GPX');
+                }
+
+                // Draw polyline
+                const polyline = L.polyline(coordinates, {
+                    color: track.color || '#2563eb',
+                    weight: 4,
+                    opacity: 0.8
+                }).addTo(map);
+
+                // Add start marker
+                L.marker(coordinates[0], {
+                    icon: L.divIcon({
+                        html: '<div style="background: #22c55e; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                        className: '',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    })
+                }).addTo(map).bindPopup('Départ');
+
+                // Add end marker
+                L.marker(coordinates[coordinates.length - 1], {
+                    icon: L.divIcon({
+                        html: '<div style="background: #ef4444; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                        className: '',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    })
+                }).addTo(map).bindPopup('Arrivée');
+
+                // Fit bounds
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+            } catch (error) {
+                console.error('Error loading GPX:', error);
+            }
+        }
+
+        // Load track on page load
+        loadSharedTrack();
+    </script>
+</body>
+</html>
