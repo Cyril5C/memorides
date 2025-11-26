@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trace partagée - Memorides</title>
+    <title id="page-title">Trace partagée - Memorides</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -213,7 +213,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Memorides - Trace partagée</h1>
+        <h1 id="page-heading">Memorides - Trace partagée</h1>
         <div class="expiry" id="expiry"></div>
     </div>
 
@@ -300,6 +300,11 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('map').style.display = 'block';
                 document.getElementById('info-panel').style.display = 'block';
+
+                // Update page title and heading with track name
+                const trackName = track.title || track.name;
+                document.getElementById('page-title').textContent = `${trackName} - Memorides`;
+                document.getElementById('page-heading').textContent = trackName;
 
                 // Display expiry info
                 const expiryDate = new Date(shareInfo.expiresAt);
