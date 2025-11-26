@@ -353,20 +353,6 @@
             <h3>Filtrer les traces</h3>
 
             <div class="filter-section">
-                <h4>Affichage</h4>
-                <div class="filter-options">
-                    <label class="filter-option">
-                        <input type="radio" name="displayFilter" value="recent" checked>
-                        <span>🆕 Récentes (3)</span>
-                    </label>
-                    <label class="filter-option">
-                        <input type="radio" name="displayFilter" value="all">
-                        <span>Toutes les traces</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="filter-section">
                 <h4>Statut</h4>
                 <div class="filter-options">
                     <label class="filter-option">
@@ -388,6 +374,22 @@
                 <h4>Libellés</h4>
                 <div class="filter-options" id="labelFiltersContainer">
                     <!-- Labels will be populated dynamically -->
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h4>Distance (km)</h4>
+                <div class="distance-filter">
+                    <div class="distance-values">
+                        <span>Min: <strong id="minDistanceValue">0</strong> km</span>
+                        <span>Max: <strong id="maxDistanceValue">200</strong> km</span>
+                    </div>
+                    <div class="distance-slider-container">
+                        <input type="range" id="minDistance" min="0" max="200" value="0" step="1" class="slider-thumb slider-thumb-min">
+                        <input type="range" id="maxDistance" min="0" max="200" value="200" step="1" class="slider-thumb slider-thumb-max">
+                        <div class="slider-track"></div>
+                        <div class="slider-range" id="sliderRange"></div>
+                    </div>
                 </div>
             </div>
 

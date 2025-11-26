@@ -62,9 +62,10 @@ function loadFiltersFromStorage() {
 
     // Default filters
     return {
-        display: 'recent', // 'recent', 'all'
         completion: 'all', // 'all', 'completed', 'todo'
-        labels: [] // Array of selected label IDs
+        labels: [], // Array of selected label IDs
+        minDistance: 0, // Minimum distance in km
+        maxDistance: 200 // Maximum distance in km
     };
 }
 
@@ -473,6 +474,49 @@ function attachEventListeners() {
     });
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
+
+    // Distance sliders
+    const minDistanceSlider = document.getElementById('minDistance');
+    const maxDistanceSlider = document.getElementById('maxDistance');
+    const minDistanceValue = document.getElementById('minDistanceValue');
+    const maxDistanceValue = document.getElementById('maxDistanceValue');
+    const sliderRange = document.getElementById('sliderRange');
+
+    function updateDistanceRange() {
+        const minValue = parseInt(minDistanceSlider.value);
+        const maxValue = parseInt(maxDistanceSlider.value);
+
+        // Ensure min doesn't exceed max
+        if (minValue > maxValue) {
+            minDistanceSlider.value = maxValue;
+        }
+
+        // Ensure max doesn't go below min
+        if (maxValue < minValue) {
+            maxDistanceSlider.value = minValue;
+        }
+
+        const finalMin = parseInt(minDistanceSlider.value);
+        const finalMax = parseInt(maxDistanceSlider.value);
+
+        minDistanceValue.textContent = finalMin;
+        maxDistanceValue.textContent = finalMax;
+
+        // Update the range bar position and width
+        const min = parseInt(minDistanceSlider.min);
+        const max = parseInt(minDistanceSlider.max);
+        const leftPercent = ((finalMin - min) / (max - min)) * 100;
+        const rightPercent = ((finalMax - min) / (max - min)) * 100;
+
+        sliderRange.style.left = leftPercent + '%';
+        sliderRange.style.width = (rightPercent - leftPercent) + '%';
+    }
+
+    minDistanceSlider.addEventListener('input', updateDistanceRange);
+    maxDistanceSlider.addEventListener('input', updateDistanceRange);
+
+    // Initialize range bar
+    updateDistanceRange();
 
     // Upload modal
     document.getElementById('closeUploadModal').addEventListener('click', () => {
@@ -1650,10 +1694,35 @@ function renderTracks() {
 
         // Apply label filters (if any labels are selected)
         if (shouldShow && state.filters.labels.length > 0) {
-            // Track must have at least one of the selected labels
             const trackLabelIds = track.labels ? track.labels.map(tl => tl.label.id) : [];
-            const hasMatchingLabel = state.filters.labels.some(labelId => trackLabelIds.includes(labelId));
+            const hasNoLabel = !track.labels || track.labels.length === 0;
+
+            // Check if "no label" filter is active
+            const noLabelFilterActive = state.filters.labels.includes('__no_label__');
+            // Get regular label filters (excluding the special "no label" filter)
+            const regularLabelFilters = state.filters.labels.filter(id => id !== '__no_label__');
+
+            let hasMatchingLabel = false;
+
+            // If "no label" filter is active and track has no labels, it matches
+            if (noLabelFilterActive && hasNoLabel) {
+                hasMatchingLabel = true;
+            }
+
+            // If any regular label filters are active, check if track has at least one
+            if (regularLabelFilters.length > 0 && regularLabelFilters.some(labelId => trackLabelIds.includes(labelId))) {
+                hasMatchingLabel = true;
+            }
+
             if (!hasMatchingLabel) {
+                shouldShow = false;
+            }
+        }
+
+        // Apply distance filter
+        if (shouldShow && track.distance !== null && track.distance !== undefined) {
+            const trackDistance = track.distance; // Distance is in km
+            if (trackDistance < state.filters.minDistance || trackDistance > state.filters.maxDistance) {
                 shouldShow = false;
             }
         }
@@ -3139,9 +3208,6 @@ function checkForSharedTrack() {
 // Filter Modal Functions
 function showFilterModal() {
     // Set current filter values in the modal
-    const displayFilter = state.filters.display;
-    document.querySelector(`input[name="displayFilter"][value="${displayFilter}"]`).checked = true;
-
     const completionFilter = state.filters.completion;
     document.querySelector(`input[name="completionFilter"][value="${completionFilter}"]`).checked = true;
 
@@ -3149,8 +3215,24 @@ function showFilterModal() {
     const labelFiltersContainer = document.getElementById('labelFiltersContainer');
     labelFiltersContainer.innerHTML = '';
 
+    // Add "Sans libellé" chip first
+    const noLabelChip = document.createElement('span');
+    const isNoLabelActive = state.filters.labels.includes('__no_label__');
+    noLabelChip.className = `label-chip${isNoLabelActive ? ' active' : ''}`;
+    noLabelChip.textContent = '🚫 Sans libellé';
+    noLabelChip.dataset.labelId = '__no_label__';
+    noLabelChip.style.fontStyle = 'italic';
+    noLabelChip.addEventListener('click', () => {
+        noLabelChip.classList.toggle('active');
+    });
+    labelFiltersContainer.appendChild(noLabelChip);
+
     if (state.labels.length === 0) {
-        labelFiltersContainer.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Aucun libellé disponible</p>';
+        // Show message only if there are no regular labels
+        const message = document.createElement('p');
+        message.style.cssText = 'color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;';
+        message.textContent = 'Aucun libellé disponible';
+        labelFiltersContainer.appendChild(message);
     } else {
         state.labels.forEach(label => {
             const isActive = state.filters.labels.includes(label.id);
@@ -3164,6 +3246,26 @@ function showFilterModal() {
             labelFiltersContainer.appendChild(chip);
         });
     }
+
+    // Set distance slider values from state
+    const minDistanceSlider = document.getElementById('minDistance');
+    const maxDistanceSlider = document.getElementById('maxDistance');
+    const minDistanceValue = document.getElementById('minDistanceValue');
+    const maxDistanceValue = document.getElementById('maxDistanceValue');
+    const sliderRange = document.getElementById('sliderRange');
+
+    minDistanceSlider.value = state.filters.minDistance || 0;
+    maxDistanceSlider.value = state.filters.maxDistance || 200;
+    minDistanceValue.textContent = state.filters.minDistance || 0;
+    maxDistanceValue.textContent = state.filters.maxDistance || 200;
+
+    // Update the range bar
+    const min = parseInt(minDistanceSlider.min);
+    const max = parseInt(minDistanceSlider.max);
+    const leftPercent = ((parseInt(minDistanceSlider.value) - min) / (max - min)) * 100;
+    const rightPercent = ((parseInt(maxDistanceSlider.value) - min) / (max - min)) * 100;
+    sliderRange.style.left = leftPercent + '%';
+    sliderRange.style.width = (rightPercent - leftPercent) + '%';
 
     document.getElementById('filterModal').classList.remove('hidden');
 }
@@ -3181,12 +3283,6 @@ async function applyFilters() {
     applyButton.innerHTML = '<span class="spinner"></span> Application...';
 
     try {
-        const previousDisplayFilter = state.filters.display;
-
-        // Get selected display filter
-        const displayFilter = document.querySelector('input[name="displayFilter"]:checked').value;
-        state.filters.display = displayFilter;
-
         // Get selected completion filter
         const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
         state.filters.completion = completionFilter;
@@ -3195,32 +3291,18 @@ async function applyFilters() {
         const activeChips = document.querySelectorAll('.label-chip.active');
         state.filters.labels = Array.from(activeChips).map(chip => chip.dataset.labelId);
 
+        // Get distance filter values
+        state.filters.minDistance = parseInt(document.getElementById('minDistance').value);
+        state.filters.maxDistance = parseInt(document.getElementById('maxDistance').value);
+
         // Save filters to localStorage
         saveFiltersToStorage();
 
-
-        // If display filter changed, reload tracks
-        if (displayFilter !== previousDisplayFilter) {
-            // Clear current tracks and layers completely
-            state.tracks.forEach(track => {
-                const layerGroup = state.layers.tracks[track.id];
-                if (layerGroup) {
-                    state.map.removeLayer(layerGroup);
-                    layerGroup.clearLayers(); // Clear all layers in the group
-                }
-            });
-            state.tracks = [];
-            state.layers.tracks = {};
-
-            // Reload with new filter
-            await loadTracksFromServer();
-        } else {
-            // Just re-render with existing tracks
-            renderTracks();
-            // Also update list view if currently active
-            if (state.currentView === 'list') {
-                renderListView();
-            }
+        // Re-render with existing tracks
+        renderTracks();
+        // Also update list view if currently active
+        if (state.currentView === 'list') {
+            renderListView();
         }
 
         closeFilterModal();
@@ -3232,17 +3314,15 @@ async function applyFilters() {
 }
 
 async function resetFilters() {
-    const previousDisplayFilter = state.filters.display;
-
     // Reset all filters to show all tracks
-    state.filters.display = 'all';
     state.filters.completion = 'all';
     state.filters.labels = [];
+    state.filters.minDistance = 0;
+    state.filters.maxDistance = 200;
 
     // Save reset filters to localStorage
     saveFiltersToStorage();
 
-    document.querySelector('input[name="displayFilter"][value="all"]').checked = true;
     document.querySelector('input[name="completionFilter"][value="all"]').checked = true;
 
     // Deactivate all label chips
@@ -3250,29 +3330,36 @@ async function resetFilters() {
         chip.classList.remove('active');
     });
 
-    // If display filter changed, reload tracks
-    if ('all' !== previousDisplayFilter) {
-        // Clear current tracks and layers completely
-        state.tracks.forEach(track => {
-            const layerGroup = state.layers.tracks[track.id];
-            if (layerGroup) {
-                state.map.removeLayer(layerGroup);
-                layerGroup.clearLayers(); // Clear all layers in the group
-            }
-        });
-        state.tracks = [];
-        state.layers.tracks = {};
+    // Reset distance sliders
+    const minDistanceSlider = document.getElementById('minDistance');
+    const maxDistanceSlider = document.getElementById('maxDistance');
+    const minDistanceValue = document.getElementById('minDistanceValue');
+    const maxDistanceValue = document.getElementById('maxDistanceValue');
+    const sliderRange = document.getElementById('sliderRange');
 
-        // Reload with new filter
-        await loadTracksFromServer();
-    } else {
-        // Just re-render with existing tracks
-        renderTracks();
-        // Also update list view if currently active
-        if (state.currentView === 'list') {
-            renderListView();
+    minDistanceSlider.value = 0;
+    maxDistanceSlider.value = 200;
+    minDistanceValue.textContent = 0;
+    maxDistanceValue.textContent = 200;
+
+    // Update the range bar
+    sliderRange.style.left = '0%';
+    sliderRange.style.width = '100%';
+
+    // Always reload tracks when resetting to ensure all tracks are shown
+    // Clear current tracks and layers completely
+    state.tracks.forEach(track => {
+        const layerGroup = state.layers.tracks[track.id];
+        if (layerGroup) {
+            state.map.removeLayer(layerGroup);
+            layerGroup.clearLayers(); // Clear all layers in the group
         }
-    }
+    });
+    state.tracks = [];
+    state.layers.tracks = {};
+
+    // Reload all tracks
+    await loadTracksFromServer();
 
     closeFilterModal();
 }
