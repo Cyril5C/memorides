@@ -499,6 +499,16 @@ function attachEventListeners() {
     const maxDistanceLimitInput = document.getElementById('maxDistanceLimit');
     const sliderRange = document.getElementById('sliderRange');
 
+    // Load saved max distance limit from localStorage
+    const savedMaxLimit = localStorage.getItem('maxDistanceLimit');
+    if (savedMaxLimit) {
+        const limit = parseInt(savedMaxLimit);
+        maxDistanceLimitInput.value = limit;
+        minDistanceSlider.max = limit;
+        maxDistanceSlider.max = limit;
+        maxDistanceSlider.value = Math.min(parseInt(maxDistanceSlider.value), limit);
+    }
+
     function updateDistanceRange() {
         const minValue = parseInt(minDistanceSlider.value);
         const maxValue = parseInt(maxDistanceSlider.value);
@@ -531,6 +541,9 @@ function attachEventListeners() {
 
     function updateMaxDistanceLimit() {
         const newLimit = parseInt(maxDistanceLimitInput.value);
+
+        // Save to localStorage
+        localStorage.setItem('maxDistanceLimit', newLimit);
 
         // Update slider max attributes
         minDistanceSlider.max = newLimit;
