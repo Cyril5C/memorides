@@ -3576,14 +3576,12 @@ function showFilterModal() {
     // Set distance slider values from state
     const minDistanceSlider = document.getElementById('minDistance');
     const maxDistanceSlider = document.getElementById('maxDistance');
-    const minDistanceValue = document.getElementById('minDistanceValue');
-    const maxDistanceValue = document.getElementById('maxDistanceValue');
+    const distanceFilterTitle = document.getElementById('distanceFilterTitle');
     const sliderRange = document.getElementById('sliderRange');
 
     minDistanceSlider.value = state.filters.minDistance || 0;
     maxDistanceSlider.value = state.filters.maxDistance || 200;
-    minDistanceValue.textContent = state.filters.minDistance || 0;
-    maxDistanceValue.textContent = state.filters.maxDistance || 200;
+    distanceFilterTitle.textContent = `Entre ${state.filters.minDistance || 0} km et ${state.filters.maxDistance || 200} km`;
 
     // Update the range bar
     const min = parseInt(minDistanceSlider.min);
