@@ -8,6 +8,9 @@ const BASE_URL = window.location.hostname === 'localhost' || window.location.hos
     ? 'http://localhost:8080'
     : `${window.location.protocol}//${window.location.host}`;
 
+// Create Canvas renderer for better performance with many points
+const canvasRenderer = L.canvas({ padding: 0.5 });
+
 // Toast notification helper
 function showToast(icon, title, message, duration = 2000) {
     const toast = document.createElement('div');
@@ -887,7 +890,8 @@ function addTrackToMap(track) {
         const polyline = L.polyline(segmentPoints, {
             color: color,
             weight: 6, // Increased from 4 for better touch on mobile
-            opacity: 0.7
+            opacity: 0.7,
+            renderer: canvasRenderer
         });
 
         // Add direction arrows along this segment
@@ -1562,7 +1566,8 @@ function showTrackInfoModal(track, isSharedLink = false) {
             const polyline = L.polyline(segmentPoints, {
                 color: color,
                 weight: 4,
-                opacity: 0.7
+                opacity: 0.7,
+                renderer: canvasRenderer
             }).addTo(state.trackDetailMap);
 
             // Add direction arrows
