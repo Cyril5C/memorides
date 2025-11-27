@@ -494,8 +494,7 @@ function attachEventListeners() {
     // Distance sliders
     const minDistanceSlider = document.getElementById('minDistance');
     const maxDistanceSlider = document.getElementById('maxDistance');
-    const minDistanceValue = document.getElementById('minDistanceValue');
-    const maxDistanceValue = document.getElementById('maxDistanceValue');
+    const distanceFilterTitle = document.getElementById('distanceFilterTitle');
     const maxDistanceLimitInput = document.getElementById('maxDistanceLimit');
     const sliderRange = document.getElementById('sliderRange');
 
@@ -526,8 +525,8 @@ function attachEventListeners() {
         const finalMin = parseInt(minDistanceSlider.value);
         const finalMax = parseInt(maxDistanceSlider.value);
 
-        minDistanceValue.textContent = finalMin;
-        maxDistanceValue.textContent = finalMax;
+        // Update title
+        distanceFilterTitle.textContent = `Entre ${finalMin} km et ${finalMax} km`;
 
         // Update the range bar position and width
         const min = parseInt(minDistanceSlider.min);
