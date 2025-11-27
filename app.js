@@ -55,16 +55,15 @@ function loadFiltersFromStorage() {
     try {
         const savedFilters = localStorage.getItem('memorides_filters');
         if (savedFilters) {
-            const filters = JSON.parse(savedFilters);
-            return filters;
+            return JSON.parse(savedFilters);
         }
     } catch (error) {
         console.error('Error loading filters from storage:', error);
     }
 
-    // Default filters
+    // Default filters - only 'done' and 'soon' checked by default for better performance
     return {
-        completion: 'all', // 'all', 'completed', 'todo'
+        statuses: ['done', 'soon'], // Array of selected status values: 'done', 'soon', 'later'
         labels: [], // Array of selected label IDs
         minDistance: 0, // Minimum distance in km
         maxDistance: 200 // Maximum distance in km
@@ -313,6 +312,11 @@ function attachEventListeners() {
 
     // Add photos to track
     document.getElementById('addTrackPhotos').addEventListener('change', handleAddTrackPhotos);
+
+    // Roadmap status change - toggle completed date field visibility
+    document.getElementById('editTrackRoadmap').addEventListener('change', (e) => {
+        toggleCompletedAtField(e.target.value);
+    });
 
     // Labels management
     document.getElementById('addLabelBtn').addEventListener('click', addLabel);
@@ -1465,17 +1469,28 @@ function showTrackInfoModal(track, isSharedLink = false) {
         const duration = track.distance ? calculateDuration(track.distance * 1000) : 0;
         document.getElementById('trackInfoDuration').textContent = formatDuration(duration);
         // Display completion status
-        if (track.completedAt) {
+        // Display roadmap status
+        const roadmap = track.roadmap || 'soon';
+        const roadmapLabels = {
+            'soon': '📅 Bientôt',
+            'later': '⏰ Plus tard',
+            'done': '✅ Faite'
+        };
+
+        let statusText = roadmapLabels[roadmap] || roadmapLabels['soon'];
+
+        // If done, add the date
+        if (roadmap === 'done' && track.completedAt) {
             const date = new Date(track.completedAt);
             const formattedDate = date.toLocaleDateString('fr-FR', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
             });
-            document.getElementById('trackInfoCompleted').textContent = `✅ Le ${formattedDate}`;
-        } else {
-            document.getElementById('trackInfoCompleted').textContent = 'A faire !';
+            statusText = `✅ ${formattedDate}`;
         }
+
+        document.getElementById('trackInfoCompleted').textContent = statusText;
     } catch (error) {
         console.error('❌ Error in showTrackInfoModal (part 1):', error);
         return;
@@ -1744,10 +1759,13 @@ function renderTracks() {
     state.tracks.forEach(track => {
         let shouldShow = true;
 
-        // Apply completion filter
-        if (state.filters.completion === 'completed' && !track.completedAt) {
-            shouldShow = false;
-        } else if (state.filters.completion === 'todo' && track.completedAt) {
+        // Apply roadmap filter
+        if (state.filters.completion === 'not-later') {
+            // Exclude 'later' tracks
+            if (track.roadmap === 'later') {
+                shouldShow = false;
+            }
+        } else if (state.filters.completion !== 'all' && track.roadmap !== state.filters.completion) {
             shouldShow = false;
         }
 
@@ -2087,11 +2105,10 @@ async function loadTracksFromServer(retryCount = 0) {
             // Apply filters to determine which tracks to load
             let tracksToLoad = result.tracks;
 
-            // First, apply completion and label filters
-            if (state.filters.completion === 'completed') {
-                tracksToLoad = tracksToLoad.filter(track => track.completedAt);
-            } else if (state.filters.completion === 'todo') {
-                tracksToLoad = tracksToLoad.filter(track => !track.completedAt);
+            // First, apply roadmap status filters
+            if (state.filters.statuses && state.filters.statuses.length > 0) {
+                // Filter tracks to only include those with selected statuses
+                tracksToLoad = tracksToLoad.filter(track => state.filters.statuses.includes(track.roadmap));
             }
 
             // Apply label filters
@@ -2260,6 +2277,10 @@ function editTrack(trackId) {
     // Populate track type select dynamically
     populateTrackTypeSelect(track.type || 'gravel');
 
+    // Set roadmap status (default to 'done' if completedAt exists, otherwise 'soon')
+    const roadmapValue = track.roadmap || (track.completedAt ? 'done' : 'soon');
+    document.getElementById('editTrackRoadmap').value = roadmapValue;
+
     document.getElementById('editTrackColor').value = track.color || '#2563eb';
     document.getElementById('editTrackComments').value = track.comments || '';
 
@@ -2270,6 +2291,9 @@ function editTrack(trackId) {
     } else {
         document.getElementById('editTrackCompletedAt').value = '';
     }
+
+    // Show/hide completed date field based on roadmap status
+    toggleCompletedAtField(roadmapValue)
 
     // Load labels from new structure
     currentTrackLabels = [];
@@ -2317,6 +2341,18 @@ function displayTrackPhotos(track) {
             deleteTrackPhoto(photoId);
         });
     });
+}
+
+// Toggle completed date field visibility based on roadmap status
+function toggleCompletedAtField(roadmapValue) {
+    const completedAtGroup = document.getElementById('completedAtGroup');
+    if (roadmapValue === 'done') {
+        completedAtGroup.style.display = 'block';
+    } else {
+        completedAtGroup.style.display = 'none';
+        // Clear the date when hiding
+        document.getElementById('editTrackCompletedAt').value = '';
+    }
 }
 
 // Close track edit modal
@@ -2421,8 +2457,15 @@ async function handleTrackEdit(event) {
     const type = document.getElementById('editTrackType').value;
     const color = document.getElementById('editTrackColor').value;
     const comments = document.getElementById('editTrackComments').value;
+    const roadmap = document.getElementById('editTrackRoadmap').value;
     const completedAt = document.getElementById('editTrackCompletedAt').value; // YYYY-MM-DD or empty string
     const labels = currentTrackLabels; // Send as array instead of comma-separated string
+
+    // Validate that completedAt is required when roadmap is 'done'
+    if (roadmap === 'done' && !completedAt) {
+        alert('La date de la ride est obligatoire pour les traces terminées.');
+        return;
+    }
 
     try {
         const encodedFilename = encodeURIComponent(track.filename);
@@ -2436,6 +2479,7 @@ async function handleTrackEdit(event) {
                 type: type,
                 color: color,
                 comments: comments || null,
+                roadmap: roadmap,
                 completedAt: completedAt || null,
                 labels: labels // Send array of label names
             })
@@ -2749,10 +2793,13 @@ function renderListView() {
     let filteredTracks = state.tracks.filter(track => {
         let shouldShow = true;
 
-        // Apply completion filter
-        if (state.filters.completion === 'completed' && !track.completedAt) {
-            shouldShow = false;
-        } else if (state.filters.completion === 'todo' && track.completedAt) {
+        // Apply roadmap filter
+        if (state.filters.completion === 'not-later') {
+            // Exclude 'later' tracks
+            if (track.roadmap === 'later') {
+                shouldShow = false;
+            }
+        } else if (state.filters.completion !== 'all' && track.roadmap !== state.filters.completion) {
             shouldShow = false;
         }
 
@@ -3543,9 +3590,11 @@ function checkForSharedTrack() {
 
 // Filter Modal Functions
 function showFilterModal() {
-    // Set current filter values in the modal
-    const completionFilter = state.filters.completion;
-    document.querySelector(`input[name="completionFilter"][value="${completionFilter}"]`).checked = true;
+    // Set current filter values in the modal - check the status checkboxes based on state
+    const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
+    statusCheckboxes.forEach(checkbox => {
+        checkbox.checked = state.filters.statuses && state.filters.statuses.includes(checkbox.value);
+    });
 
     // Populate label filters
     const labelFiltersContainer = document.getElementById('labelFiltersContainer');
@@ -3617,9 +3666,9 @@ async function applyFilters() {
     applyButton.innerHTML = '<span class="spinner"></span> Application...';
 
     try {
-        // Get selected completion filter
-        const completionFilter = document.querySelector('input[name="completionFilter"]:checked').value;
-        state.filters.completion = completionFilter;
+        // Get selected status filters from checked checkboxes
+        const checkedStatuses = document.querySelectorAll('input[name="statusFilter"]:checked');
+        state.filters.statuses = Array.from(checkedStatuses).map(checkbox => checkbox.value);
 
         // Get selected label filters from active chips
         const activeChips = document.querySelectorAll('.label-chip.active');
@@ -3632,12 +3681,19 @@ async function applyFilters() {
         // Save filters to localStorage
         saveFiltersToStorage();
 
-        // Re-render with existing tracks
-        renderTracks();
-        // Also update list view if currently active
-        if (state.currentView === 'list') {
-            renderListView();
-        }
+        // Clear current tracks and reload from server with new filters
+        state.tracks.forEach(track => {
+            const layerGroup = state.layers.tracks[track.id];
+            if (layerGroup) {
+                state.map.removeLayer(layerGroup);
+                layerGroup.clearLayers();
+            }
+        });
+        state.tracks = [];
+        state.layers.tracks = {};
+
+        // Reload all tracks with new filters
+        await loadTracksFromServer();
 
         closeFilterModal();
     } finally {
@@ -3648,8 +3704,8 @@ async function applyFilters() {
 }
 
 async function resetFilters() {
-    // Reset all filters to show all tracks
-    state.filters.completion = 'all';
+    // Reset all filters to default (done and soon checked)
+    state.filters.statuses = ['done', 'soon'];
     state.filters.labels = [];
     state.filters.minDistance = 0;
     state.filters.maxDistance = 200;
@@ -3657,7 +3713,10 @@ async function resetFilters() {
     // Save reset filters to localStorage
     saveFiltersToStorage();
 
-    document.querySelector('input[name="completionFilter"][value="all"]').checked = true;
+    // Uncheck all status checkboxes, then check 'done' and 'soon'
+    document.querySelectorAll('input[name="statusFilter"]').forEach(checkbox => {
+        checkbox.checked = state.filters.statuses.includes(checkbox.value);
+    });
 
     // Deactivate all label chips
     document.querySelectorAll('.label-chip.active').forEach(chip => {
@@ -3671,14 +3730,16 @@ async function resetFilters() {
     const maxDistanceValue = document.getElementById('maxDistanceValue');
     const sliderRange = document.getElementById('sliderRange');
 
-    minDistanceSlider.value = 0;
-    maxDistanceSlider.value = 200;
-    minDistanceValue.textContent = 0;
-    maxDistanceValue.textContent = 200;
+    if (minDistanceSlider) minDistanceSlider.value = 0;
+    if (maxDistanceSlider) maxDistanceSlider.value = 200;
+    if (minDistanceValue) minDistanceValue.textContent = 0;
+    if (maxDistanceValue) maxDistanceValue.textContent = 200;
 
     // Update the range bar
-    sliderRange.style.left = '0%';
-    sliderRange.style.width = '100%';
+    if (sliderRange) {
+        sliderRange.style.left = '0%';
+        sliderRange.style.width = '100%';
+    }
 
     // Always reload tracks when resetting to ensure all tracks are shown
     // Clear current tracks and layers completely

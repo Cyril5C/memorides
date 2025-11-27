@@ -476,7 +476,7 @@ app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res
 app.patch('/api/gpx/:filename', async (req, res) => {
         try {
             const { filename } = req.params;
-            const { name, title, comments, labels, type, direction, color, completedAt } = req.body;
+            const { name, title, comments, labels, type, direction, color, roadmap, completedAt } = req.body;
 
         // First, get the track to get its ID
         const existingTrack = await prisma.track.findUnique({
@@ -497,6 +497,7 @@ app.patch('/api/gpx/:filename', async (req, res) => {
                 ...(type && { type }),
                 ...(direction && { direction }),
                 ...(color && { color }),
+                ...(roadmap !== undefined && { roadmap }),
                 ...(completedAt !== undefined && { completedAt: completedAt ? new Date(completedAt) : null })
             }
         });

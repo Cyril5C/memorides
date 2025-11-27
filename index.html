@@ -212,12 +212,20 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="editTrackColor">Couleur de la trace:</label>
-                    <input type="color" id="editTrackColor" value="#2563eb">
+                    <label for="editTrackRoadmap">Statut:</label>
+                    <select id="editTrackRoadmap">
+                        <option value="soon">📅 Bientôt</option>
+                        <option value="later">⏰ Plus tard</option>
+                        <option value="done">✅ Faite</option>
+                    </select>
+                </div>
+                <div class="form-group" id="completedAtGroup">
+                    <label for="editTrackCompletedAt">Date de la ride <span style="color: red;">*</span>:</label>
+                    <input type="date" id="editTrackCompletedAt" placeholder="JJ/MM/AAAA">
                 </div>
                 <div class="form-group">
-                    <label for="editTrackCompletedAt">Date de la ride :</label>
-                    <input type="date" id="editTrackCompletedAt" placeholder="JJ/MM/AAAA">
+                    <label for="editTrackColor">Couleur de la trace:</label>
+                    <input type="color" id="editTrackColor" value="#2563eb">
                 </div>
                 <div class="form-group">
                     <label>Libellés:</label>
@@ -358,17 +366,17 @@
             <div class="filter-section">
                 <h4>Statut</h4>
                 <div class="filter-options">
-                    <label class="filter-option">
-                        <input type="radio" name="completionFilter" value="all" checked>
-                        <span>Toutes</span>
+                    <label class="filter-option" title="Faites">
+                        <input type="checkbox" name="statusFilter" value="done">
+                        <span>✅</span>
                     </label>
-                    <label class="filter-option">
-                        <input type="radio" name="completionFilter" value="completed">
-                        <span>✅ Faites</span>
+                    <label class="filter-option" title="Bientôt">
+                        <input type="checkbox" name="statusFilter" value="soon">
+                        <span>📅</span>
                     </label>
-                    <label class="filter-option">
-                        <input type="radio" name="completionFilter" value="todo">
-                        <span>📝 À faire</span>
+                    <label class="filter-option" title="Plus tard">
+                        <input type="checkbox" name="statusFilter" value="later">
+                        <span>⏰</span>
                     </label>
                 </div>
             </div>

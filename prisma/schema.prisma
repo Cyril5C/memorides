@@ -22,7 +22,8 @@ model Track {
   distance     Float     // in kilometers
   elevation    Float     // in meters
   duration     Float?    // in minutes
-  completedAt  DateTime? // Date when the track was completed (null = project/to-do)
+  roadmap      String    @default("later") // 'soon', 'later', or 'done'
+  completedAt  DateTime? // Date when the track was completed (required if roadmap = 'done')
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   photos       Photo[]   // Photos associated with this track
@@ -32,6 +33,7 @@ model Track {
   @@index([createdAt])
   @@index([type])
   @@index([completedAt])
+  @@index([roadmap])
 }
 
 model Label {
