@@ -386,6 +386,11 @@
                     <div class="distance-values">
                         <span>Min: <strong id="minDistanceValue">0</strong> km</span>
                         <span>Max: <strong id="maxDistanceValue">200</strong> km</span>
+                        <span style="margin-left: auto;">
+                            <label for="maxDistanceLimit" style="font-size: 0.875rem; color: var(--text-secondary);">Limite max:</label>
+                            <input type="number" id="maxDistanceLimit" min="10" max="1000" value="200" step="10" style="width: 70px; padding: 0.25rem; margin-left: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                            <span style="margin-left: 0.25rem;">km</span>
+                        </span>
                     </div>
                     <div class="distance-slider-container">
                         <input type="range" id="minDistance" min="0" max="200" value="0" step="1" class="slider-thumb slider-thumb-min">

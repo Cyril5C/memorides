@@ -496,6 +496,7 @@ function attachEventListeners() {
     const maxDistanceSlider = document.getElementById('maxDistance');
     const minDistanceValue = document.getElementById('minDistanceValue');
     const maxDistanceValue = document.getElementById('maxDistanceValue');
+    const maxDistanceLimitInput = document.getElementById('maxDistanceLimit');
     const sliderRange = document.getElementById('sliderRange');
 
     function updateDistanceRange() {
@@ -528,8 +529,28 @@ function attachEventListeners() {
         sliderRange.style.width = (rightPercent - leftPercent) + '%';
     }
 
+    function updateMaxDistanceLimit() {
+        const newLimit = parseInt(maxDistanceLimitInput.value);
+
+        // Update slider max attributes
+        minDistanceSlider.max = newLimit;
+        maxDistanceSlider.max = newLimit;
+
+        // Adjust current values if they exceed new limit
+        if (parseInt(minDistanceSlider.value) > newLimit) {
+            minDistanceSlider.value = newLimit;
+        }
+        if (parseInt(maxDistanceSlider.value) > newLimit) {
+            maxDistanceSlider.value = newLimit;
+        }
+
+        // Update display
+        updateDistanceRange();
+    }
+
     minDistanceSlider.addEventListener('input', updateDistanceRange);
     maxDistanceSlider.addEventListener('input', updateDistanceRange);
+    maxDistanceLimitInput.addEventListener('change', updateMaxDistanceLimit);
 
     // Initialize range bar
     updateDistanceRange();
