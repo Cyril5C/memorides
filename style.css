@@ -1732,6 +1732,53 @@ select {
         overflow-y: auto;
         margin: 0; /* Remove any margin */
     }
+
+    /* Filter modal optimizations for mobile */
+    .modal-content {
+        padding: 1rem;
+        max-height: calc(100vh - 2rem);
+        max-height: calc(100dvh - 2rem); /* Dynamic viewport height for mobile browsers */
+    }
+
+    .modal-form {
+        max-width: 100%;
+    }
+
+    .modal-form h3 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .filter-section {
+        margin-bottom: 1rem;
+    }
+
+    .filter-section h4 {
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .filter-option {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .filter-option span {
+        font-size: 0.9rem;
+    }
+
+    .form-actions {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding-top: 1rem;
+        margin-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-bottom: 1rem;
+    }
 }
 
 .modal-fullscreen #trackInfoContent h3 {
