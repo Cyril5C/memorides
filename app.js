@@ -8,9 +8,6 @@ const BASE_URL = window.location.hostname === 'localhost' || window.location.hos
     ? 'http://localhost:8080'
     : `${window.location.protocol}//${window.location.host}`;
 
-// Create Canvas renderer for better performance with many points
-const canvasRenderer = L.canvas({ padding: 0.5 });
-
 // Toast notification helper
 function showToast(icon, title, message, duration = 2000) {
     const toast = document.createElement('div');
@@ -36,6 +33,8 @@ function showToast(icon, title, message, duration = 2000) {
 const state = {
     map: null,
     trackDetailMap: null, // Map for track detail modal
+    mainCanvasRenderer: null, // Canvas renderer for main map
+    detailCanvasRenderer: null, // Canvas renderer for detail map
     tracks: [],
     photos: [],
     labels: [], // All available labels
@@ -239,6 +238,9 @@ function initMap() {
     state.map = L.map('map', {
         zoomControl: false // Disable default zoom control
     }).setView([45.5, 2.5], 6);
+
+    // Create Canvas renderer for main map (better performance with many points)
+    state.mainCanvasRenderer = L.canvas({ padding: 0.5 });
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -891,7 +893,7 @@ function addTrackToMap(track) {
             color: color,
             weight: 6, // Increased from 4 for better touch on mobile
             opacity: 0.7,
-            renderer: canvasRenderer
+            renderer: state.mainCanvasRenderer
         });
 
         // Add direction arrows along this segment
@@ -1540,6 +1542,9 @@ function showTrackInfoModal(track, isSharedLink = false) {
             zoomControl: false
         });
 
+        // Create separate Canvas renderer for detail map
+        state.detailCanvasRenderer = L.canvas({ padding: 0.5 });
+
         // Add tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -1567,7 +1572,7 @@ function showTrackInfoModal(track, isSharedLink = false) {
                 color: color,
                 weight: 4,
                 opacity: 0.7,
-                renderer: canvasRenderer
+                renderer: state.detailCanvasRenderer
             }).addTo(state.trackDetailMap);
 
             // Add direction arrows
