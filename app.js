@@ -61,7 +61,7 @@ function loadFiltersFromStorage() {
         console.error('Error loading filters from storage:', error);
     }
 
-    // Default filters - only 'done' and 'soon' checked by default for better performance
+    // Default filters - 'done' and 'soon' checked by default, 'later' unchecked
     return {
         statuses: ['done', 'soon'], // Array of selected status values: 'done', 'soon', 'later'
         labels: [], // Array of selected label IDs
@@ -1776,14 +1776,12 @@ function renderTracks() {
     state.tracks.forEach(track => {
         let shouldShow = true;
 
-        // Apply roadmap filter
-        if (state.filters.completion === 'not-later') {
-            // Exclude 'later' tracks
-            if (track.roadmap === 'later') {
+        // Apply roadmap status filter
+        if (state.filters.statuses && state.filters.statuses.length > 0) {
+            // Only show tracks whose roadmap status is in the selected statuses
+            if (!state.filters.statuses.includes(track.roadmap)) {
                 shouldShow = false;
             }
-        } else if (state.filters.completion !== 'all' && track.roadmap !== state.filters.completion) {
-            shouldShow = false;
         }
 
         // Apply label filters (if any labels are selected)
@@ -2816,14 +2814,12 @@ function renderListView() {
     let filteredTracks = state.tracks.filter(track => {
         let shouldShow = true;
 
-        // Apply roadmap filter
-        if (state.filters.completion === 'not-later') {
-            // Exclude 'later' tracks
-            if (track.roadmap === 'later') {
+        // Apply roadmap status filter
+        if (state.filters.statuses && state.filters.statuses.length > 0) {
+            // Only show tracks whose roadmap status is in the selected statuses
+            if (!state.filters.statuses.includes(track.roadmap)) {
                 shouldShow = false;
             }
-        } else if (state.filters.completion !== 'all' && track.roadmap !== state.filters.completion) {
-            shouldShow = false;
         }
 
         // Apply label filters (if any labels are selected)
@@ -3727,7 +3723,7 @@ async function applyFilters() {
 }
 
 async function resetFilters() {
-    // Reset all filters to default (done and soon checked)
+    // Reset all filters to default ('done' and 'soon' checked, 'later' unchecked)
     state.filters.statuses = ['done', 'soon'];
     state.filters.labels = [];
     state.filters.minDistance = 0;
@@ -3736,7 +3732,7 @@ async function resetFilters() {
     // Save reset filters to localStorage
     saveFiltersToStorage();
 
-    // Uncheck all status checkboxes, then check 'done' and 'soon'
+    // Check all status checkboxes
     document.querySelectorAll('input[name="statusFilter"]').forEach(checkbox => {
         checkbox.checked = state.filters.statuses.includes(checkbox.value);
     });
