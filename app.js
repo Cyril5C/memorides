@@ -2106,7 +2106,13 @@ async function loadTracksFromServer(retryCount = 0) {
             let tracksToLoad = result.tracks;
 
             // First, apply roadmap status filters
-            if (state.filters.statuses && state.filters.statuses.length > 0) {
+            // Only filter if not all statuses are selected (all 3 possible values)
+            const allStatuses = ['done', 'soon', 'later'];
+            const allStatusesSelected = state.filters.statuses &&
+                state.filters.statuses.length === 3 &&
+                allStatuses.every(status => state.filters.statuses.includes(status));
+
+            if (state.filters.statuses && state.filters.statuses.length > 0 && !allStatusesSelected) {
                 // Filter tracks to only include those with selected statuses
                 tracksToLoad = tracksToLoad.filter(track => state.filters.statuses.includes(track.roadmap));
             }
