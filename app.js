@@ -1470,24 +1470,28 @@ function showTrackInfoModal(track, isSharedLink = false) {
         document.getElementById('trackInfoDuration').textContent = formatDuration(duration);
         // Display completion status
         // Display roadmap status
-        const roadmap = track.roadmap || 'soon';
+        const roadmap = track.roadmap;
         const roadmapLabels = {
             'soon': '📅 Bientôt',
             'later': '⏰ Plus tard',
             'done': '✅ Faite'
         };
 
-        let statusText = roadmapLabels[roadmap] || roadmapLabels['soon'];
+        let statusText = '-';
 
-        // If done, add the date
-        if (roadmap === 'done' && track.completedAt) {
-            const date = new Date(track.completedAt);
-            const formattedDate = date.toLocaleDateString('fr-FR', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-            statusText = `✅ ${formattedDate}`;
+        if (roadmap && roadmapLabels[roadmap]) {
+            statusText = roadmapLabels[roadmap];
+
+            // If done, add the date
+            if (roadmap === 'done' && track.completedAt) {
+                const date = new Date(track.completedAt);
+                const formattedDate = date.toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                statusText = `✅ ${formattedDate}`;
+            }
         }
 
         document.getElementById('trackInfoCompleted').textContent = statusText;
