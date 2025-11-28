@@ -2140,15 +2140,6 @@ async function loadTracksFromServer(retryCount = 0) {
                 });
             }
 
-            // Then apply display filter (recent = only 3 most recent)
-            if (state.filters.display === 'recent') {
-                // Sort by createdAt descending and take first 3
-                tracksToLoad = [...tracksToLoad]
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                    .slice(0, 3);
-            } else {
-            }
-
             const totalTracks = tracksToLoad.length;
             let loadedTracks = 0;
 
