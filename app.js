@@ -388,6 +388,19 @@ function attachEventListeners() {
         await exportBackup();
     });
 
+    // Menu Clear Storage
+    document.getElementById('menuClearStorage').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Êtes-vous sûr de vouloir vider le cache ? Cela supprimera tous les filtres et préférences enregistrés.')) {
+            localStorage.clear();
+            closeMenuFunc();
+            alert('Cache vidé avec succès !');
+            window.location.reload();
+        } else {
+            closeMenuFunc();
+        }
+    });
+
     // Menu Logout
     document.getElementById('menuLogout').addEventListener('click', async (e) => {
         e.preventDefault();
