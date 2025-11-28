@@ -29,22 +29,6 @@ async function start() {
         }
         console.log('✅ Migrations applied successfully');
 
-        // Run roadmap migration
-        console.log('🔄 Running roadmap migration...');
-        try {
-          const { stdout: roadmapStdout, stderr: roadmapStderr } = await execPromise('node migrate-roadmap.js');
-          console.log('📋 Roadmap Migration STDOUT:');
-          console.log(roadmapStdout);
-          if (roadmapStderr) {
-            console.log('⚠️  Roadmap Migration STDERR:');
-            console.error(roadmapStderr);
-          }
-        } catch (roadmapError) {
-          console.error('⚠️  Roadmap migration failed (non-critical):');
-          console.error('   Error message:', roadmapError.message);
-          // Don't throw - migration failure is non-critical if column already exists
-        }
-
         // Seed track types after schema is applied
         console.log('🌱 Seeding track types...');
         try {
