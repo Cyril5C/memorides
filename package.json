@@ -10,7 +10,8 @@
     "build": "npx prisma generate",
     "postinstall": "prisma generate",
     "deploy-schema": "node deploy-schema.js",
-    "seed-types": "node prisma/seed-track-types.js"
+    "seed-types": "node prisma/seed-track-types.js",
+    "migrate-roadmap": "node migrate-roadmap.js"
   },
   "keywords": [
     "gpx",
