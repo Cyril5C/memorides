@@ -306,14 +306,14 @@ app.get('/share/:token', async (req, res) => {
     <meta property="og:url" content="${baseUrl}/share/${token}">
     <meta property="og:title" content="${trackName} - ${distance}">
     <meta property="og:description" content="${description}">
-    <meta property="og:image" content="${baseUrl}/api/share/${token}/preview-image">
+    <meta property="og:image" content="${baseUrl}/api/share/${token}/preview-image.jpg">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="${baseUrl}/share/${token}">
     <meta property="twitter:title" content="${trackName} - ${distance}">
     <meta property="twitter:description" content="${description}">
-    <meta property="twitter:image" content="${baseUrl}/api/share/${token}/preview-image">
+    <meta property="twitter:image" content="${baseUrl}/api/share/${token}/preview-image.jpg">
 `;
 
             // Inject OG tags right after <head> tag and update title
@@ -474,6 +474,14 @@ app.get('/api/share/:token/preview-image', async (req, res) => {
         console.error('Error generating preview image:', error);
         res.status(500).json({ error: 'Failed to generate preview image' });
     }
+});
+
+// Alias with .jpg extension for better social media compatibility
+app.get('/api/share/:token/preview-image.jpg', async (req, res) => {
+    // Forward to the main endpoint without extension
+    const { token } = req.params;
+    req.url = `/api/share/${token}/preview-image`;
+    app.handle(req, res);
 });
 
 // Create uploads directories variables (needed before requireAuth for public access)
