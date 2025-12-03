@@ -299,8 +299,11 @@ app.get('/share/:token', async (req, res) => {
                 description += ` • Labels: ${labels}`;
             }
 
-            // Inject Open Graph metadata right after <head> tag (WhatsApp requires OG tags in first 300KB)
-            const metaTags = `
+            // Replace head section with proper meta tag order (matching working WhatsApp format)
+            const headReplacement = `<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${trackName} - ${distance} - Memorides</title>
     <meta name="description" content="${description}">
     <meta property="og:title" content="${trackName} - ${distance}">
     <meta property="og:description" content="${description}">
@@ -308,11 +311,10 @@ app.get('/share/:token', async (req, res) => {
     <meta property="og:url" content="${baseUrl}/share/${token}">
 `;
 
-            // Inject meta tags right after <head> tag and update title
-            html = html.replace('<head>', `<head>${metaTags}`);
+            // Replace from <head> to end of title tag
             html = html.replace(
-                '<title id="page-title">Trace partagée - Memorides</title>',
-                `<title id="page-title">${trackName} - ${distance} - Memorides</title>`
+                /<head>[\s\S]*?<title[^>]*>.*?<\/title>/,
+                headReplacement
             );
         }
 
