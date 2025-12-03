@@ -258,6 +258,14 @@ app.get('/share/:token', async (req, res) => {
         // Read the share.html template
         let html = fs.readFileSync(path.join(__dirname, 'share.html'), 'utf8');
 
+        // Determine base URL - handle Railway proxy headers
+        let baseUrl = process.env.BASE_URL;
+        if (!baseUrl) {
+            const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+            const host = req.get('x-forwarded-host') || req.get('host');
+            baseUrl = `${protocol}://${host}`;
+        }
+
         if (shareLink && shareLink.active && shareLink.expiresAt > new Date()) {
             const track = shareLink.track;
             const trackName = track.title || track.name;
@@ -285,17 +293,17 @@ app.get('/share/:token', async (req, res) => {
             const ogMetaTags = `
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="${process.env.BASE_URL || 'http://localhost:8080'}/share/${token}">
+    <meta property="og:url" content="${baseUrl}/share/${token}">
     <meta property="og:title" content="${trackName} - ${distance}">
     <meta property="og:description" content="${description}">
-    <meta property="og:image" content="${process.env.BASE_URL || 'http://localhost:8080'}/api/share/${token}/preview-image">
+    <meta property="og:image" content="${baseUrl}/api/share/${token}/preview-image">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="${process.env.BASE_URL || 'http://localhost:8080'}/share/${token}">
+    <meta property="twitter:url" content="${baseUrl}/share/${token}">
     <meta property="twitter:title" content="${trackName} - ${distance}">
     <meta property="twitter:description" content="${description}">
-    <meta property="twitter:image" content="${process.env.BASE_URL || 'http://localhost:8080'}/api/share/${token}/preview-image">`;
+    <meta property="twitter:image" content="${baseUrl}/api/share/${token}/preview-image">`;
 
             // Inject meta tags into HTML head
             html = html.replace('</head>', `${ogMetaTags}\n</head>`);
