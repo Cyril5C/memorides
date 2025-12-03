@@ -299,7 +299,7 @@ app.get('/share/:token', async (req, res) => {
                 description += ` • Labels: ${labels}`;
             }
 
-            // Inject Open Graph metadata
+            // Inject Open Graph metadata right after <head> tag (WhatsApp requires OG tags in first 300KB)
             const ogMetaTags = `
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
@@ -313,12 +313,11 @@ app.get('/share/:token', async (req, res) => {
     <meta property="twitter:url" content="${baseUrl}/share/${token}">
     <meta property="twitter:title" content="${trackName} - ${distance}">
     <meta property="twitter:description" content="${description}">
-    <meta property="twitter:image" content="${baseUrl}/api/share/${token}/preview-image">`;
+    <meta property="twitter:image" content="${baseUrl}/api/share/${token}/preview-image">
+`;
 
-            // Inject meta tags into HTML head
-            html = html.replace('</head>', `${ogMetaTags}\n</head>`);
-
-            // Update page title
+            // Inject OG tags right after <head> tag and update title
+            html = html.replace('<head>', `<head>${ogMetaTags}`);
             html = html.replace(
                 '<title id="page-title">Trace partagée - Memorides</title>',
                 `<title id="page-title">${trackName} - ${distance} - Memorides</title>`
