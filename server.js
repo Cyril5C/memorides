@@ -13,6 +13,7 @@ const archiver = require('archiver');
 const session = require('express-session');
 const { body, param, validationResult } = require('express-validator');
 const pgSession = require('connect-pg-simple')(session);
+const { createCanvas, registerFont } = require('canvas');
 
 console.log('🔧 Initializing server...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
@@ -235,8 +236,84 @@ app.get('/robots.txt', (req, res) => {
 // ============= PUBLIC SHARE ROUTE (NO AUTH REQUIRED) =============
 
 // Serve the public share page (no authentication required)
-app.get('/share/:token', (req, res) => {
-    res.sendFile(path.join(__dirname, 'share.html'));
+app.get('/share/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        // Find share link by token
+        const shareLink = await prisma.shareLink.findUnique({
+            where: { token },
+            include: {
+                track: {
+                    include: {
+                        labels: {
+                            include: {
+                                label: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Read the share.html template
+        let html = fs.readFileSync(path.join(__dirname, 'share.html'), 'utf8');
+
+        if (shareLink && shareLink.active && shareLink.expiresAt > new Date()) {
+            const track = shareLink.track;
+            const trackName = track.title || track.name;
+            const distance = track.distance ? `${track.distance.toFixed(2)} km` : 'N/A';
+            const elevation = track.elevation ? `${Math.round(track.elevation)} m` : 'N/A';
+
+            // Calculate duration (assuming 15 km/h average speed)
+            const durationHours = track.distance / 15;
+            const hours = Math.floor(durationHours);
+            const minutes = Math.round((durationHours - hours) * 60);
+            const duration = hours > 0 ? `${hours}h${minutes}min` : `${minutes}min`;
+
+            // Get labels as text
+            const labels = track.labels && track.labels.length > 0
+                ? track.labels.map(tl => tl.label.name).join(', ')
+                : '';
+
+            // Build description
+            let description = `Distance: ${distance} • Dénivelé: ${elevation} • Durée estimée: ${duration}`;
+            if (labels) {
+                description += ` • Labels: ${labels}`;
+            }
+
+            // Inject Open Graph metadata
+            const ogMetaTags = `
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="${process.env.BASE_URL || 'http://localhost:8080'}/share/${token}">
+    <meta property="og:title" content="${trackName} - ${distance}">
+    <meta property="og:description" content="${description}">
+    <meta property="og:image" content="${process.env.BASE_URL || 'http://localhost:8080'}/api/share/${token}/preview-image">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="${process.env.BASE_URL || 'http://localhost:8080'}/share/${token}">
+    <meta property="twitter:title" content="${trackName} - ${distance}">
+    <meta property="twitter:description" content="${description}">
+    <meta property="twitter:image" content="${process.env.BASE_URL || 'http://localhost:8080'}/api/share/${token}/preview-image">`;
+
+            // Inject meta tags into HTML head
+            html = html.replace('</head>', `${ogMetaTags}\n</head>`);
+
+            // Update page title
+            html = html.replace(
+                '<title id="page-title">Trace partagée - Memorides</title>',
+                `<title id="page-title">${trackName} - ${distance} - Memorides</title>`
+            );
+        }
+
+        res.send(html);
+    } catch (error) {
+        console.error('Error generating share page:', error);
+        // Fallback to static HTML if error
+        res.sendFile(path.join(__dirname, 'share.html'));
+    }
 });
 
 // Public route to access shared track (no authentication required)
@@ -324,6 +401,138 @@ app.get('/api/share/:token/gpx', async (req, res) => {
     } catch (error) {
         console.error('Error serving shared GPX:', error);
         res.status(500).json({ error: 'Failed to serve GPX file' });
+    }
+});
+
+// Generate preview image for social media sharing (no authentication required)
+app.get('/api/share/:token/preview-image', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        // Find share link
+        const shareLink = await prisma.shareLink.findUnique({
+            where: { token },
+            include: {
+                track: {
+                    include: {
+                        labels: {
+                            include: {
+                                label: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!shareLink) {
+            return res.status(404).json({ error: 'Share link not found' });
+        }
+
+        // Check if link is expired or inactive
+        const now = new Date();
+        if (!shareLink.active || shareLink.expiresAt < now) {
+            return res.status(410).json({ error: 'This share link has expired' });
+        }
+
+        const track = shareLink.track;
+        const trackName = track.title || track.name;
+        const distance = track.distance ? `${track.distance.toFixed(2)} km` : 'N/A';
+        const elevation = track.elevation ? `${Math.round(track.elevation)} m` : 'N/A';
+
+        // Calculate duration (assuming 15 km/h average speed)
+        const durationHours = track.distance / 15;
+        const hours = Math.floor(durationHours);
+        const minutes = Math.round((durationHours - hours) * 60);
+        const duration = hours > 0 ? `${hours}h${minutes}min` : `${minutes}min`;
+
+        // Get labels
+        const labels = track.labels && track.labels.length > 0
+            ? track.labels.map(tl => tl.label.name).join(', ')
+            : '';
+
+        // Create canvas (1200x630 is optimal for Open Graph)
+        const width = 1200;
+        const height = 630;
+        const canvas = createCanvas(width, height);
+        const ctx = canvas.getContext('2d');
+
+        // Background gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, '#2563eb');
+        gradient.addColorStop(1, '#1e40af');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // White overlay for content area
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(40, 40, width - 80, height - 80);
+
+        // Draw title
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 56px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        // Word wrap for title
+        const maxWidth = width - 120;
+        const words = trackName.split(' ');
+        let line = '';
+        let y = 80;
+
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+
+            if (testWidth > maxWidth && n > 0) {
+                ctx.fillText(line, 80, y);
+                line = words[n] + ' ';
+                y += 70;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, 80, y);
+        y += 100;
+
+        // Draw stats
+        ctx.font = '40px sans-serif';
+        ctx.fillStyle = '#475569';
+
+        const stats = [
+            `📏 Distance: ${distance}`,
+            `⛰️  Dénivelé: ${elevation}`,
+            `⏱️  Durée: ${duration}`
+        ];
+
+        stats.forEach((stat, index) => {
+            ctx.fillText(stat, 80, y + (index * 60));
+        });
+
+        y += stats.length * 60 + 40;
+
+        // Draw labels if present
+        if (labels) {
+            ctx.font = '32px sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText(`🏷️  ${labels}`, 80, y);
+        }
+
+        // Draw Memorides logo/text at bottom
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillStyle = '#2563eb';
+        ctx.textAlign = 'right';
+        ctx.fillText('Memorides', width - 80, height - 80);
+
+        // Send image
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        canvas.createPNGStream().pipe(res);
+
+    } catch (error) {
+        console.error('Error generating preview image:', error);
+        res.status(500).json({ error: 'Failed to generate preview image' });
     }
 });
 
