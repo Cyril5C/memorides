@@ -266,6 +266,16 @@ app.get('/share/:token', async (req, res) => {
             baseUrl = `${protocol}://${host}`;
         }
 
+        console.log('Share link request:', {
+            token,
+            found: !!shareLink,
+            active: shareLink?.active,
+            expiresAt: shareLink?.expiresAt,
+            now: new Date(),
+            expired: shareLink ? shareLink.expiresAt < new Date() : null,
+            baseUrl
+        });
+
         if (shareLink && shareLink.active && shareLink.expiresAt > new Date()) {
             const track = shareLink.track;
             const trackName = track.title || track.name;
