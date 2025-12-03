@@ -1757,9 +1757,12 @@ select {
         top: 10px;
         right: 10px;
         z-index: 1001;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
+        background: #6366f1 !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #filterModal .modal-close:active {
+        background: #4f46e5 !important;
     }
 
     .modal-form h3 {
@@ -1860,6 +1863,14 @@ select {
 }
 
 /* Filter Modal Styles */
+#filterModal .modal-close {
+    background: #6366f1 !important;
+}
+
+#filterModal .modal-close:active {
+    background: #4f46e5 !important;
+}
+
 .filter-section {
     margin-bottom: 1.5rem;
 }

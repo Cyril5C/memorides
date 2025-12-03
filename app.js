@@ -650,6 +650,9 @@ async function handleGPXUpload(event) {
 
                     // Fit map to the newly added track
                     state.map.fitBounds(track.bounds, { padding: [50, 50] });
+
+                    // Open edit modal for the newly added track
+                    editTrack(track.id);
                 }
             }
         } catch (error) {
