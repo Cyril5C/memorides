@@ -13,7 +13,6 @@ const archiver = require('archiver');
 const session = require('express-session');
 const { body, param, validationResult } = require('express-validator');
 const pgSession = require('connect-pg-simple')(session);
-const { createCanvas, registerFont } = require('canvas');
 
 console.log('🔧 Initializing server...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
@@ -409,16 +408,17 @@ app.get('/api/share/:token/preview-image', async (req, res) => {
     try {
         const { token } = req.params;
 
-        // Find share link
+        // Find share link with photos
         const shareLink = await prisma.shareLink.findUnique({
             where: { token },
             include: {
                 track: {
                     include: {
-                        labels: {
-                            include: {
-                                label: true
-                            }
+                        photos: {
+                            orderBy: {
+                                createdAt: 'desc'
+                            },
+                            take: 1
                         }
                     }
                 }
@@ -436,99 +436,22 @@ app.get('/api/share/:token/preview-image', async (req, res) => {
         }
 
         const track = shareLink.track;
-        const trackName = track.title || track.name;
-        const distance = track.distance ? `${track.distance.toFixed(2)} km` : 'N/A';
-        const elevation = track.elevation ? `${Math.round(track.elevation)} m` : 'N/A';
 
-        // Calculate duration (assuming 15 km/h average speed)
-        const durationHours = track.distance / 15;
-        const hours = Math.floor(durationHours);
-        const minutes = Math.round((durationHours - hours) * 60);
-        const duration = hours > 0 ? `${hours}h${minutes}min` : `${minutes}min`;
+        // If track has photos, use the last photo as preview
+        if (track.photos && track.photos.length > 0) {
+            const lastPhoto = track.photos[0];
+            const photoPath = path.join(__dirname, lastPhoto.path);
 
-        // Get labels
-        const labels = track.labels && track.labels.length > 0
-            ? track.labels.map(tl => tl.label.name).join(', ')
-            : '';
-
-        // Create canvas (1200x630 is optimal for Open Graph)
-        const width = 1200;
-        const height = 630;
-        const canvas = createCanvas(width, height);
-        const ctx = canvas.getContext('2d');
-
-        // Background gradient
-        const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        gradient.addColorStop(0, '#2563eb');
-        gradient.addColorStop(1, '#1e40af');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
-
-        // White overlay for content area
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.fillRect(40, 40, width - 80, height - 80);
-
-        // Draw title
-        ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 56px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-
-        // Word wrap for title
-        const maxWidth = width - 120;
-        const words = trackName.split(' ');
-        let line = '';
-        let y = 80;
-
-        for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + ' ';
-            const metrics = ctx.measureText(testLine);
-            const testWidth = metrics.width;
-
-            if (testWidth > maxWidth && n > 0) {
-                ctx.fillText(line, 80, y);
-                line = words[n] + ' ';
-                y += 70;
-            } else {
-                line = testLine;
+            if (fs.existsSync(photoPath)) {
+                res.setHeader('Content-Type', 'image/jpeg');
+                res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+                return res.sendFile(photoPath);
             }
         }
-        ctx.fillText(line, 80, y);
-        y += 100;
 
-        // Draw stats
-        ctx.font = '40px sans-serif';
-        ctx.fillStyle = '#475569';
-
-        const stats = [
-            `📏 Distance: ${distance}`,
-            `⛰️  Dénivelé: ${elevation}`,
-            `⏱️  Durée: ${duration}`
-        ];
-
-        stats.forEach((stat, index) => {
-            ctx.fillText(stat, 80, y + (index * 60));
-        });
-
-        y += stats.length * 60 + 40;
-
-        // Draw labels if present
-        if (labels) {
-            ctx.font = '32px sans-serif';
-            ctx.fillStyle = '#64748b';
-            ctx.fillText(`🏷️  ${labels}`, 80, y);
-        }
-
-        // Draw Memorides logo/text at bottom
-        ctx.font = 'bold 36px sans-serif';
-        ctx.fillStyle = '#2563eb';
-        ctx.textAlign = 'right';
-        ctx.fillText('Memorides', width - 80, height - 80);
-
-        // Send image
-        res.setHeader('Content-Type', 'image/png');
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-        canvas.createPNGStream().pipe(res);
+        // Fallback: return a placeholder or default image
+        // For now, return a simple error since we removed Canvas dependency
+        res.status(404).json({ error: 'No preview image available' });
 
     } catch (error) {
         console.error('Error generating preview image:', error);
