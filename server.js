@@ -303,7 +303,7 @@ app.get('/share/:token', async (req, res) => {
             const headReplacement = `<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${trackName} - ${distance} - Memorides</title>
+    <title id="page-title">${trackName} - ${distance} - Memorides</title>
     <meta name="description" content="${description}">
     <meta property="og:title" content="${trackName} - ${distance}">
     <meta property="og:description" content="${description}">
