@@ -1743,9 +1743,9 @@ app.post('/api/share-links', async (req, res) => {
         const crypto = require('crypto');
         const token = crypto.randomBytes(16).toString('hex');
 
-        // Set expiration date to 15 days from now
+        // Set expiration date to 7 days from now
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 15);
+        expiresAt.setDate(expiresAt.getDate() + 7);
 
         // Create share link
         const shareLink = await prisma.shareLink.create({
