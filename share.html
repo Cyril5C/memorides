@@ -7,6 +7,8 @@
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Polyline Decorator -->
+    <script src="https://unpkg.com/leaflet-polylinedecorator@1.7.0/dist/leaflet.polylineDecorator.js"></script>
 
     <style>
         * {
@@ -503,6 +505,26 @@
                     color: track.color || '#2563eb',
                     weight: 4,
                     opacity: 0.8
+                }).addTo(map);
+
+                // Add direction arrows along the track
+                L.polylineDecorator(polyline, {
+                    patterns: [
+                        {
+                            offset: '5%',
+                            repeat: 100, // Show arrow every 100 pixels
+                            symbol: L.Symbol.arrowHead({
+                                pixelSize: 12,
+                                polygon: false,
+                                pathOptions: {
+                                    stroke: true,
+                                    weight: 2,
+                                    color: track.color || '#2563eb',
+                                    opacity: 0.7
+                                }
+                            })
+                        }
+                    ]
                 }).addTo(map);
 
                 // Add start marker
