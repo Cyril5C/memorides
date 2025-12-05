@@ -234,10 +234,6 @@
     <div class="info-panel" id="info-panel" style="display: none;">
         <div class="info-grid">
             <div class="info-item">
-                <div class="info-label">Nom</div>
-                <div class="info-value" id="track-name"></div>
-            </div>
-            <div class="info-item">
                 <div class="info-label">Distance</div>
                 <div class="info-value" id="track-distance"></div>
             </div>
@@ -323,7 +319,6 @@
                 document.getElementById('expiry').textContent = `Expire le ${expiryDate.toLocaleDateString('fr-FR')} | ${shareInfo.viewCount} vues`;
 
                 // Display track info
-                document.getElementById('track-name').textContent = track.title || track.name;
                 document.getElementById('track-distance').textContent = `${track.distance.toFixed(2)} km`;
                 document.getElementById('track-elevation').textContent = `${Math.round(track.elevation)} m`;
                 document.getElementById('track-type').textContent = `${typeIcons[track.type] || ''} ${typeLabels[track.type] || track.type}`;
