@@ -34,9 +34,17 @@
             color: #2563eb;
         }
 
-        .header .expiry {
-            font-size: 0.875rem;
-            color: #666;
+        .expiry {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            font-size: 0.75rem;
+            color: #999;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.25rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
         }
 
         #map {
@@ -216,7 +224,6 @@
 <body>
     <div class="header">
         <h1 id="page-heading">Memorides - Trace partagée</h1>
-        <div class="expiry" id="expiry"></div>
     </div>
 
     <div id="loading" class="loading">Chargement de la trace...</div>
@@ -261,6 +268,9 @@
         <button class="photo-modal-nav next" id="photo-modal-next">›</button>
         <img id="modal-photo" src="" alt="Photo">
     </div>
+
+    <!-- Expiry info at bottom right -->
+    <div class="expiry" id="expiry"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
