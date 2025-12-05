@@ -242,6 +242,10 @@
                 <div class="info-value" id="track-elevation"></div>
             </div>
             <div class="info-item">
+                <div class="info-label">Durée</div>
+                <div class="info-value" id="track-duration"></div>
+            </div>
+            <div class="info-item">
                 <div class="info-label">Type</div>
                 <div class="info-value" id="track-type"></div>
             </div>
@@ -321,6 +325,14 @@
                 // Display track info
                 document.getElementById('track-distance').textContent = `${track.distance.toFixed(2)} km`;
                 document.getElementById('track-elevation').textContent = `${Math.round(track.elevation)} m`;
+
+                // Calculate duration (assuming 17 km/h average speed)
+                const durationHours = track.distance / 17;
+                const hours = Math.floor(durationHours);
+                const minutes = Math.round((durationHours - hours) * 60);
+                const durationText = hours > 0 ? `${hours}h${minutes.toString().padStart(2, '0')}` : `${minutes}min`;
+                document.getElementById('track-duration').textContent = durationText;
+
                 document.getElementById('track-type').textContent = `${typeIcons[track.type] || ''} ${typeLabels[track.type] || track.type}`;
 
                 // Setup download link
