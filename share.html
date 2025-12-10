@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">Trace partagée - Memorides</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet Polyline Decorator -->
-    <script src="https://unpkg.com/leaflet-polylinedecorator@1.7.0/dist/leaflet.polylineDecorator.js"></script>
 
     <style>
         * {
@@ -276,6 +278,8 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Polyline Decorator (must be loaded after Leaflet) -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
 
     <script>
         const token = window.location.pathname.split('/').pop();
@@ -342,7 +346,7 @@
                 document.getElementById('download-gpx').download = track.filename;
 
                 // Initialize map
-                map = L.map('map').setView([46.5, 2.5], 6);
+                map = L.map('map', { zoomControl: false }).setView([46.5, 2.5], 6);
 
                 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -547,8 +551,10 @@
                     })
                 }).addTo(map).bindPopup('Arrivée');
 
-                // Fit bounds
-                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                // Fit bounds after all elements are added
+                setTimeout(() => {
+                    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                }, 200);
 
             } catch (error) {
                 console.error('Error loading GPX:', error);
