@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Memorides</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 2rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 2rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-card .label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1e293b;
+        }
+
+        .table-container {
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f1f5f9;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-done {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-soon {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-later {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .labels {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .label-tag {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .track-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .track-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 1rem;
+            margin: 2rem;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Administration</h1>
+            <p>Vue d'ensemble des traces</p>
+        </header>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="label">Total traces</div>
+                <div class="value" id="total-tracks">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Distance totale</div>
+                <div class="value" id="total-distance">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Dénivelé total</div>
+                <div class="value" id="total-elevation">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Photos</div>
+                <div class="value" id="total-photos">-</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="loading" id="loading">Chargement des données...</div>
+            <div class="error" id="error" style="display: none;"></div>
+            <table id="tracks-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>Distance</th>
+                        <th>Dénivelé</th>
+                        <th>Labels</th>
+                        <th>Photos</th>
+                        <th>Date création</th>
+                    </tr>
+                </thead>
+                <tbody id="tracks-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const typeLabels = {
+            'hiking': '🥾 Randonnée',
+            'cycling': '🚴 Vélo route',
+            'gravel': '🚵 Gravel',
+            'road': '🚴 Route'
+        };
+
+        const statusLabels = {
+            'done': 'Fait',
+            'soon': 'Bientôt',
+            'later': 'Plus tard'
+        };
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/admin/tracks');
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des données');
+                }
+
+                const data = await response.json();
+
+                // Update stats
+                document.getElementById('total-tracks').textContent = data.stats.totalTracks;
+                document.getElementById('total-distance').textContent = `${data.stats.totalDistance.toFixed(0)} km`;
+                document.getElementById('total-elevation').textContent = `${data.stats.totalElevation.toFixed(0)} m`;
+                document.getElementById('total-photos').textContent = data.stats.totalPhotos;
+
+                // Populate table
+                const tbody = document.getElementById('tracks-body');
+                tbody.innerHTML = '';
+
+                data.tracks.forEach(track => {
+                    const row = document.createElement('tr');
+
+                    const titleOrName = track.title || track.name || 'Sans nom';
+                    const distance = track.distance ? `${track.distance.toFixed(2)} km` : '-';
+                    const elevation = track.elevation ? `${Math.round(track.elevation)} m` : '-';
+                    const photoCount = track._count?.photos || 0;
+                    const createdAt = new Date(track.createdAt).toLocaleDateString('fr-FR');
+
+                    const labels = track.labels && track.labels.length > 0
+                        ? track.labels.map(tl => `<span class="label-tag">${tl.label.name}</span>`).join('')
+                        : '-';
+
+                    row.innerHTML = `
+                        <td>${track.id}</td>
+                        <td><a href="/?track=${track.id}" class="track-link">${titleOrName}</a></td>
+                        <td>${typeLabels[track.type] || track.type}</td>
+                        <td><span class="status-badge status-${track.status}">${statusLabels[track.status] || track.status}</span></td>
+                        <td>${distance}</td>
+                        <td>${elevation}</td>
+                        <td><div class="labels">${labels}</div></td>
+                        <td>${photoCount}</td>
+                        <td>${createdAt}</td>
+                    `;
+
+                    tbody.appendChild(row);
+                });
+
+                // Show table, hide loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tracks-table').style.display = 'table';
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = error.message;
+            }
+        }
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>

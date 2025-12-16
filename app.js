@@ -200,33 +200,32 @@ async function handleDeleteGpxFile(filename) {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if this is a shared link
+    // Check if this is a track link (from admin page)
     const urlParams = new URLSearchParams(window.location.search);
-    const sharedTrackId = urlParams.get('track');
+    const trackId = urlParams.get('track');
 
-    if (sharedTrackId) {
-        // Shared link mode: only load what's needed for the track detail
-        // Hide the main map view
-        document.getElementById('mapView').style.display = 'none';
+    // Always initialize in normal mode with full map and all tracks
+    initMap();
+    attachEventListeners();
+    await loadTrackTypesFromServer();
+    await loadLabelsFromServer();
 
-        attachEventListeners();
-        await loadTrackTypesFromServer();
-        await loadLabelsFromServer();
+    // If there's a track ID in URL, temporarily disable filters to ensure the track loads
+    if (trackId) {
+        const originalFilters = { ...state.filters };
+        // Clear filters temporarily
+        state.filters.statuses = ['done', 'soon', 'later'];
+        state.filters.labels = [];
 
-        // Load only the specific track
-        await loadSingleTrack(sharedTrackId);
-
-        // Load photos for this track
+        await loadTracksFromServer();
         await loadPhotosFromServer();
+
+        // Restore original filters
+        state.filters = originalFilters;
 
         // Open the track detail modal
         checkForSharedTrack();
     } else {
-        // Normal mode: load everything
-        initMap();
-        attachEventListeners();
-        await loadTrackTypesFromServer();
-        await loadLabelsFromServer();
         await loadTracksFromServer();
         await loadPhotosFromServer();
     }
@@ -1770,6 +1769,13 @@ function closeTrackInfoModal() {
     if (state.trackDetailMap) {
         state.trackDetailMap.remove();
         state.trackDetailMap = null;
+    }
+
+    // Remove track parameter from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('track')) {
+        // Remove the track parameter and update URL without page reload
+        window.history.replaceState({}, '', window.location.pathname);
     }
 }
 
@@ -3591,11 +3597,12 @@ function checkForSharedTrack() {
     if (trackId) {
         // Add a delay to ensure everything is loaded and rendered
         setTimeout(() => {
-            const track = state.tracks.find(t => t.id === trackId);
+            const track = state.tracks.find(t => t.id == trackId); // Use == to handle string/type comparison
             if (track) {
-                showTrackInfoModal(track, true); // true = shared link mode
+                showTrackInfoModal(track, false); // false = not shared link mode (show normal modal)
             } else {
                 console.warn('Track not found:', trackId);
+                console.warn('Available tracks:', state.tracks.map(t => t.id));
             }
         }, 500);
     }

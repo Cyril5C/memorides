@@ -1865,6 +1865,38 @@ app.get('/api/tracks/:trackId/share-links', async (req, res) => {
     }
 });
 
+// Admin API - Get all tracks with stats
+app.get('/api/admin/tracks', async (req, res) => {
+    try {
+        const tracks = await prisma.track.findMany({
+            include: {
+                labels: {
+                    include: {
+                        label: true
+                    }
+                },
+                _count: {
+                    select: { photos: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Calculate stats
+        const stats = {
+            totalTracks: tracks.length,
+            totalDistance: tracks.reduce((sum, track) => sum + (track.distance || 0), 0),
+            totalElevation: tracks.reduce((sum, track) => sum + (track.elevation || 0), 0),
+            totalPhotos: tracks.reduce((sum, track) => sum + (track._count?.photos || 0), 0)
+        };
+
+        res.json({ tracks, stats });
+    } catch (error) {
+        console.error('Error fetching admin tracks:', error);
+        res.status(500).json({ error: 'Failed to fetch tracks' });
+    }
+});
+
 // Start server with async initialization
 async function startServer() {
     try {
