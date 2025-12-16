@@ -170,6 +170,51 @@ class CacheManager {
         });
     }
 
+    // Update a single track in cache
+    async updateTrack(track) {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction('tracks', 'readwrite');
+            const store = transaction.objectStore('tracks');
+
+            const request = store.put(track);
+
+            request.onsuccess = () => {
+                console.log(`✏️ Track ${track.id} updated in cache`);
+                resolve();
+            };
+
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
+    }
+
+    // Remove a single track from cache
+    async removeTrack(trackId) {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['tracks', 'gpx'], 'readwrite');
+
+            // Remove from tracks store
+            transaction.objectStore('tracks').delete(trackId);
+
+            // Remove from gpx store
+            transaction.objectStore('gpx').delete(trackId);
+
+            transaction.oncomplete = () => {
+                console.log(`🗑️ Track ${trackId} removed from cache`);
+                resolve();
+            };
+
+            transaction.onerror = () => {
+                reject(transaction.error);
+            };
+        });
+    }
+
     // Clear all cache
     async clearAll() {
         if (!this.db) await this.init();

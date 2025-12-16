@@ -1950,9 +1950,9 @@ async function deleteTrack(trackId) {
         // Remove from state
         state.tracks = state.tracks.filter(t => t.id.toString() !== trackId.toString());
 
-        // Invalidate cache when track deleted
-        cacheManager.saveMetadata('lastSync', 0).catch(err =>
-            console.error('Error invalidating cache:', err)
+        // Remove track from cache (instead of invalidating entire cache)
+        cacheManager.removeTrack(track.id).catch(err =>
+            console.error('Error removing track from cache:', err)
         );
 
         renderTracks();
@@ -2653,6 +2653,11 @@ async function handleTrackEdit(event) {
 
             // Re-render tracks list
             renderTracks();
+
+            // Update track in cache (instead of invalidating entire cache)
+            cacheManager.updateTrack(track).catch(err =>
+                console.error('Error updating track in cache:', err)
+            );
 
             // Close modal
             closeTrackEditModal();

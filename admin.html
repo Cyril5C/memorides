@@ -672,15 +672,15 @@
                 const latLngs = points.map(p => [p[0], p[1]]);
                 const color = track.color || '#2563eb';
                 const polyline = L.polyline(latLngs, { color: color, weight: 3 }).addTo(trackDetailMap);
-                trackDetailMap.fitBounds(polyline.getBounds(), { padding: [20, 20] });
 
                 // Show modal
                 document.getElementById('trackInfoModal').classList.remove('hidden');
 
-                // Force map resize after modal is visible
+                // Force map resize and center after modal is visible
                 setTimeout(() => {
                     trackDetailMap.invalidateSize();
-                }, 100);
+                    trackDetailMap.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                }, 150);
 
             } catch (error) {
                 console.error('Error loading track:', error);
