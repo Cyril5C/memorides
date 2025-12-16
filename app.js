@@ -650,6 +650,11 @@ async function handleGPXUpload(event) {
                     // Fit map to the newly added track
                     state.map.fitBounds(track.bounds, { padding: [50, 50] });
 
+                    // Invalidate cache when new track added
+                    cacheManager.saveMetadata('lastSync', 0).catch(err =>
+                        console.error('Error invalidating cache:', err)
+                    );
+
                     // Open edit modal for the newly added track
                     editTrack(track.id);
                 }
@@ -1945,6 +1950,11 @@ async function deleteTrack(trackId) {
         // Remove from state
         state.tracks = state.tracks.filter(t => t.id.toString() !== trackId.toString());
 
+        // Invalidate cache when track deleted
+        cacheManager.saveMetadata('lastSync', 0).catch(err =>
+            console.error('Error invalidating cache:', err)
+        );
+
         renderTracks();
 
         // Show success toast
@@ -2104,12 +2114,96 @@ function updateLoadingCounter(loaded, total) {
     }
 }
 
-// Load tracks from server
-async function loadTracksFromServer(retryCount = 0) {
-    // Show loading overlay
-    showLoadingOverlay();
-
+// Load tracks from server (with cache support)
+async function loadTracksFromServer(retryCount = 0, forceRefresh = false) {
     try {
+        // Try to load from cache first (if not forcing refresh)
+        if (!forceRefresh) {
+            const isCacheFresh = await cacheManager.isCacheFresh(60); // Cache valid for 60 minutes
+
+            if (isCacheFresh) {
+                console.log('📦 Loading tracks from cache...');
+                // Only show overlay briefly for cache loading
+                showLoadingOverlay();
+                const cachedTracks = await cacheManager.getTracks();
+
+                if (cachedTracks && cachedTracks.length > 0) {
+                    // Apply filters to cached tracks
+                    let tracksToLoad = cachedTracks;
+
+                    const allStatuses = ['done', 'soon', 'later'];
+                    const allStatusesSelected = state.filters.statuses &&
+                        state.filters.statuses.length === 3 &&
+                        allStatuses.every(status => state.filters.statuses.includes(status));
+
+                    if (state.filters.statuses && state.filters.statuses.length > 0 && !allStatusesSelected) {
+                        tracksToLoad = tracksToLoad.filter(track => state.filters.statuses.includes(track.roadmap));
+                    }
+
+                    if (state.filters.labels.length > 0) {
+                        tracksToLoad = tracksToLoad.filter(track => {
+                            const trackLabelIds = track.labels ? track.labels.map(tl => tl.label.id) : [];
+                            return state.filters.labels.some(labelId => trackLabelIds.includes(labelId));
+                        });
+                    }
+
+                    // Load tracks from cache
+                    const totalTracks = tracksToLoad.length;
+                    let loadedTracks = 0;
+
+                    for (const trackData of tracksToLoad) {
+                        // Get cached GPX
+                        const cachedGPX = await cacheManager.getGPX(trackData.id);
+
+                        if (cachedGPX) {
+                            const gpxData = parseGPX(cachedGPX);
+
+                            if (gpxData) {
+                                const track = {
+                                    ...trackData,
+                                    points: gpxData.points,
+                                    bounds: calculateBounds(gpxData.points)
+                                };
+
+                                state.tracks.push(track);
+                                addTrackToMap(track);
+
+                                loadedTracks++;
+                                updateLoadingCounter(loadedTracks, totalTracks);
+                            } else {
+                                console.warn(`Failed to parse GPX for track ${trackData.id}`);
+                            }
+                        } else {
+                            console.warn(`No cached GPX found for track ${trackData.id}`);
+                        }
+                    }
+
+                    console.log(`Cache load: ${loadedTracks}/${totalTracks} tracks loaded`);
+
+                    // If cache is incomplete (missing GPX files), force refresh from server
+                    if (loadedTracks < totalTracks * 0.8) {
+                        console.warn(`⚠️ Cache incomplete (${loadedTracks}/${totalTracks}), loading from server...`);
+                        // Clear partial cache and reload from server
+                        await cacheManager.saveMetadata('lastSync', 0);
+                        // Fall through to load from server
+                    } else {
+                        hideLoadingOverlay();
+                        renderTracks();
+
+                        console.log(`✅ Loaded ${loadedTracks} tracks from cache`);
+
+                        // Fetch updates in background (don't wait)
+                        fetchAndUpdateCache().catch(err => console.error('Background sync error:', err));
+
+                        return;
+                    }
+                }
+            }
+        }
+
+        // If cache miss or force refresh, load from server
+        console.log('🌐 Loading tracks from server...');
+        showLoadingOverlay();
         const response = await fetch(`${API_BASE_URL}/gpx/list`);
 
         if (!response.ok) {
@@ -2181,10 +2275,21 @@ async function loadTracksFromServer(retryCount = 0) {
                         // Update counter after each track is loaded
                         updateLoadingCounter(loadedTracks, totalTracks);
                         // Don't add to map here - renderTracks() will handle it with filters
+
+                        // Save to cache (async, don't wait)
+                        cacheManager.saveGPX(trackData.id, contentResult.content).catch(err =>
+                            console.error('Error caching GPX:', err)
+                        );
                     }
                 }
             }
         }
+
+        // Save tracks metadata to cache
+        await cacheManager.saveTracks(result.tracks);
+        await cacheManager.updateLastSync();
+
+        console.log(`💾 Saved ${result.tracks.length} tracks to cache`);
 
         // renderTracks() will add tracks to map based on active filters
         renderTracks();
@@ -2199,6 +2304,26 @@ async function loadTracksFromServer(retryCount = 0) {
     } finally {
         // Always hide loading overlay when done
         hideLoadingOverlay();
+    }
+}
+
+// Background sync function to update cache silently
+async function fetchAndUpdateCache() {
+    try {
+        console.log('🔄 Background sync starting...');
+        const response = await fetch(`${API_BASE_URL}/gpx/list`);
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        if (result.success && result.tracks) {
+            await cacheManager.saveTracks(result.tracks);
+            await cacheManager.updateLastSync();
+            console.log('✅ Background sync completed');
+        }
+    } catch (error) {
+        console.error('Background sync failed:', error);
     }
 }
 

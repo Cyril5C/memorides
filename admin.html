@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Memorides</title>
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="stylesheet" href="/style.css">
     <style>
         * {
             margin: 0;
@@ -356,6 +357,55 @@
         </div>
     </div>
 
+    <!-- Track Info Modal -->
+    <div id="trackInfoModal" class="modal modal-fullscreen hidden">
+        <div class="modal-content modal-fullscreen-content">
+            <div id="trackInfoContent">
+                <h3 id="trackInfoTitle" class="clickable-title">
+                    <span class="back-arrow">←</span>
+                    <span id="trackInfoTitleText"></span>
+                </h3>
+
+                <!-- Map container for the track -->
+                <div style="position: relative;">
+                    <div id="trackDetailMap" style="height: 300px; width: 100%; margin: 1rem 0; border-radius: 8px; overflow: hidden;"></div>
+                </div>
+
+                <div class="track-info-stats">
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Distance:</span>
+                        <span id="trackInfoDistance" class="track-stat-value"></span>
+                    </div>
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Dénivelé:</span>
+                        <span id="trackInfoElevation" class="track-stat-value"></span>
+                    </div>
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Durée:</span>
+                        <span id="trackInfoDuration" class="track-stat-value"></span>
+                    </div>
+                    <div class="track-stat-item">
+                        <span class="track-stat-label">Statut:</span>
+                        <span id="trackInfoCompleted" class="track-stat-value"></span>
+                    </div>
+                </div>
+                <div id="trackInfoCommentsContainer" class="track-info-comments" style="display: none;">
+                    <p id="trackInfoComments"></p>
+                </div>
+                <div id="trackInfoLabelsContainer" class="track-info-labels" style="display: none;">
+                    <div id="trackInfoLabels" class="labels-display-readonly"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet CSS & JS for map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- IndexedDB Cache Manager -->
+    <script src="cache.js"></script>
+
     <script>
         const typeLabels = {
             'hiking': '🥾 Randonnée',
@@ -405,7 +455,7 @@
 
                     const status = track.roadmap || track.status || 'done';
                     row.innerHTML = `
-                        <td><a href="/?track=${track.id}" class="track-link">${titleOrName}</a></td>
+                        <td><a href="#" class="track-link" data-track-id="${track.id}">${titleOrName}</a></td>
                         <td>${typeLabels[track.type] || track.type}</td>
                         <td><span class="status-badge status-${status}">${statusLabels[status] || status}</span></td>
                         <td>${distance}</td>
@@ -419,6 +469,12 @@
                     row.dataset.distance = track.distance || 0;
                     row.dataset.elevation = track.elevation || 0;
                     row.dataset.createdAt = new Date(track.createdAt).getTime();
+
+                    // Add click handler for track link
+                    row.querySelector('.track-link').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        openTrackModal(track);
+                    });
 
                     tbody.appendChild(row);
                 });
@@ -473,6 +529,182 @@
                 });
             });
         }
+
+        // Track modal state
+        let trackDetailMap = null;
+
+        // Helper functions
+        function getTypeIcon(type) {
+            const icons = {
+                'hiking': '🥾',
+                'cycling': '🚴',
+                'gravel': '🚵',
+                'road': '🚴'
+            };
+            return icons[type] || '🗺️';
+        }
+
+        function formatDistance(distance) {
+            return distance ? `${distance.toFixed(2)} km` : '-';
+        }
+
+        function formatElevation(elevation) {
+            return elevation ? `${Math.round(elevation)} m` : '-';
+        }
+
+        function calculateDuration(distanceMeters) {
+            const averageSpeedKmh = 15;
+            const hours = (distanceMeters / 1000) / averageSpeedKmh;
+            return hours * 3600;
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return '-';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return hours > 0 ? `${hours}h${minutes.toString().padStart(2, '0')}` : `${minutes}min`;
+        }
+
+        function parseGPX(gpxText) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(gpxText, 'text/xml');
+            const trkpts = xmlDoc.getElementsByTagName('trkpt');
+            const points = [];
+
+            for (let i = 0; i < trkpts.length; i++) {
+                const lat = parseFloat(trkpts[i].getAttribute('lat'));
+                const lon = parseFloat(trkpts[i].getAttribute('lon'));
+                const eleNode = trkpts[i].getElementsByTagName('ele')[0];
+                const ele = eleNode ? parseFloat(eleNode.textContent) : 0;
+                points.push([lat, lon, ele]);
+            }
+
+            return points;
+        }
+
+        async function openTrackModal(trackMetadata) {
+            try {
+                // Fetch track GPX content
+                const response = await fetch(`/api/gpx/${trackMetadata.filename}`);
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement de la trace');
+                }
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || 'Erreur inconnue');
+                }
+
+                const track = trackMetadata;
+
+                // Update modal title
+                const displayTitle = track.title || track.name;
+                const typeIcon = getTypeIcon(track.type);
+                document.getElementById('trackInfoTitleText').textContent = `${typeIcon} ${displayTitle}`;
+
+                // Update track info
+                document.getElementById('trackInfoDistance').textContent = formatDistance(track.distance);
+                document.getElementById('trackInfoElevation').textContent = formatElevation(track.elevation);
+                const duration = track.distance ? calculateDuration(track.distance * 1000) : 0;
+                document.getElementById('trackInfoDuration').textContent = formatDuration(duration);
+
+                // Display roadmap status
+                const roadmapLabels = {
+                    'soon': '📅 Bientôt',
+                    'later': '⏰ Plus tard',
+                    'done': '✅ Faite'
+                };
+
+                let statusText = '-';
+                if (track.roadmap && roadmapLabels[track.roadmap]) {
+                    statusText = roadmapLabels[track.roadmap];
+
+                    if (track.roadmap === 'done' && track.completedAt) {
+                        const date = new Date(track.completedAt);
+                        const formattedDate = date.toLocaleDateString('fr-FR', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                        statusText = `✅ ${formattedDate}`;
+                    }
+                }
+                document.getElementById('trackInfoCompleted').textContent = statusText;
+
+                // Handle comments
+                if (track.comments) {
+                    document.getElementById('trackInfoComments').textContent = track.comments;
+                    document.getElementById('trackInfoCommentsContainer').style.display = 'block';
+                } else {
+                    document.getElementById('trackInfoCommentsContainer').style.display = 'none';
+                }
+
+                // Handle labels
+                if (track.labels && track.labels.length > 0) {
+                    const labelsHtml = track.labels.map(tl =>
+                        `<span class="label-tag">${tl.label.name}</span>`
+                    ).join('');
+                    document.getElementById('trackInfoLabels').innerHTML = labelsHtml;
+                    document.getElementById('trackInfoLabelsContainer').style.display = 'block';
+                } else {
+                    document.getElementById('trackInfoLabelsContainer').style.display = 'none';
+                }
+
+                // Parse GPX points
+                const points = parseGPX(data.content);
+
+                // Initialize or update map
+                if (!trackDetailMap) {
+                    trackDetailMap = L.map('trackDetailMap');
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(trackDetailMap);
+                }
+
+                // Clear existing layers
+                trackDetailMap.eachLayer(layer => {
+                    if (layer instanceof L.Polyline || layer instanceof L.Marker) {
+                        trackDetailMap.removeLayer(layer);
+                    }
+                });
+
+                // Add track to map
+                const latLngs = points.map(p => [p[0], p[1]]);
+                const color = track.color || '#2563eb';
+                const polyline = L.polyline(latLngs, { color: color, weight: 3 }).addTo(trackDetailMap);
+                trackDetailMap.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+
+                // Show modal
+                document.getElementById('trackInfoModal').classList.remove('hidden');
+
+                // Force map resize after modal is visible
+                setTimeout(() => {
+                    trackDetailMap.invalidateSize();
+                }, 100);
+
+            } catch (error) {
+                console.error('Error loading track:', error);
+                alert('Erreur lors du chargement de la trace: ' + error.message);
+            }
+        }
+
+        function closeTrackInfoModal() {
+            document.getElementById('trackInfoModal').classList.add('hidden');
+
+            // Clean up track detail map
+            if (trackDetailMap) {
+                trackDetailMap.remove();
+                trackDetailMap = null;
+            }
+        }
+
+        // Close modal when clicking on title or outside
+        document.getElementById('trackInfoTitle').addEventListener('click', closeTrackInfoModal);
+        document.getElementById('trackInfoModal').addEventListener('click', (e) => {
+            if (e.target.id === 'trackInfoModal') {
+                closeTrackInfoModal();
+            }
+        });
 
         // Load data on page load
         loadData().then(() => {
