@@ -32,6 +32,7 @@
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
             color: white;
             padding: 2rem;
+            position: relative;
         }
 
         header h1 {
@@ -41,6 +42,34 @@
 
         header p {
             opacity: 0.9;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .back-button:active {
+            transform: translateY(0);
         }
 
         .stats {
@@ -295,8 +324,10 @@
             td:first-child {
                 max-width: 40vw;
             }
+
+            /* Hide stats block on mobile */
             .stats {
-                grid-template-columns: 1fr;
+                display: none;
             }
 
             table {
@@ -312,6 +343,10 @@
 <body>
     <div class="container">
         <header>
+            <a href="/" class="back-button">
+                <span>←</span>
+                <span>Retour</span>
+            </a>
             <h1>Administration</h1>
             <p>Vue d'ensemble des traces</p>
         </header>
