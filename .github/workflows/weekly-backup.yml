@@ -10,6 +10,9 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -20,23 +23,19 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
       - name: Install dependencies (without postinstall)
         run: npm install --ignore-scripts
 
-      - name: Link Railway project and run backup
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Link Railway project
         run: |
-          echo "🔑 Authenticating with Railway..."
-          export RAILWAY_TOKEN="${RAILWAY_TOKEN}"
-          echo "🔗 Linking Railway project..."
-          railway link --project 024458df-b6d3-4a4b-a537-bcb583c4502a --environment production
+          echo "🔗 Linking to Railway project..."
+          railway link 024458df-b6d3-4a4b-a537-bcb583c4502a
+
+      - name: Run backup via Railway
+        run: |
           echo "🚀 Starting complete backup from Railway production..."
           echo "📊 Exporting database, GPX files, and photos..."
-          railway run --service memorides --environment production node export-data.js
+          railway run --service memorides node export-data.js
 
       - name: Get backup date
         id: date
