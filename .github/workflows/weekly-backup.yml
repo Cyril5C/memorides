@@ -15,7 +15,7 @@ jobs:
       - name: Trigger backup on Railway
         run: |
           echo "🚀 Triggering backup on Railway production..."
-          curl -X POST https://memorides.up.railway.app/api/backup \
+          curl -X POST https://memorides.cincet.net/api/backup \
             -H "Authorization: Bearer ${{ secrets.BACKUP_TOKEN }}" \
             -H "Content-Type: application/json" \
             --fail --show-error
