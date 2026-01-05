@@ -557,6 +557,10 @@ const upload = multer({
 
 // Routes
 
+// Backup endpoint (protected by token, not session)
+const { authenticateBackup, handleBackup } = require('./backup-endpoint');
+app.post('/api/backup', authenticateBackup, handleBackup);
+
 // Upload GPX file with metadata
 app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res) => {
     try {

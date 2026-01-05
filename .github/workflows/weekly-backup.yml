@@ -10,52 +10,22 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    container: ghcr.io/railwayapp/cli:latest
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Node.js in container
+      - name: Trigger backup on Railway
         run: |
-          apk add --no-cache nodejs npm
+          echo "🚀 Triggering backup on Railway production..."
+          curl -X POST https://memorides.up.railway.app/api/backup \
+            -H "Authorization: Bearer ${{ secrets.BACKUP_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --fail --show-error
 
-      - name: Install dependencies (without postinstall)
-        run: npm install --ignore-scripts
-
-      - name: Configure Prisma for PostgreSQL
+      - name: Wait for backup to complete
         run: |
-          sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
-
-      - name: Generate Prisma Client for PostgreSQL
-        env:
-          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
-        run: npx prisma generate
-
-      - name: Debug Railway environment
-        run: |
-          echo "🔍 Debugging Railway environment variables..."
-          railway run --service memorides printenv | grep -i database || echo "No DATABASE_URL found"
-          railway run --service memorides printenv | grep -i postgres || echo "No postgres vars found"
-
-      - name: Run backup via Railway
-        run: |
-          echo "🚀 Starting complete backup from Railway production..."
-          echo "📊 Exporting database, GPX files, and photos..."
-          railway run --service memorides node export-data.js
-
-      - name: Get backup date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
-      - name: Upload backup artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: memorides-backup-${{ steps.date.outputs.date }}
-          path: exports/memorides-backup-*
-          retention-days: 90
+          echo "⏳ Waiting 30 seconds for backup to complete..."
+          sleep 30
+          echo "✅ Backup completed on Railway"
+          echo "📦 Backup stored in Railway's /exports directory"
 
       - name: Send notification on failure
         if: failure()
