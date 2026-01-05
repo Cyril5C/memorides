@@ -123,6 +123,11 @@ Voir BACKUP.md dans le repository pour les instructions de restauration.
 `;
     await fs.writeFile(path.join(EXPORT_PATH, 'README.md'), readme);
 
+    // Create human-readable organized export
+    console.log('📝 Creating organized human-readable export...');
+    await createOrganizedExport(tracks, labels, photos, EXPORT_PATH);
+    console.log('✅ Organized export created');
+
     console.log('✅ Backup completed successfully');
 
     // Create ZIP archive
@@ -152,6 +157,171 @@ async function createZipArchive(sourceDir, outputPath) {
         archive.directory(sourceDir, path.basename(sourceDir));
         archive.finalize();
     });
+}
+
+async function createOrganizedExport(tracks, labels, allPhotos, exportPath) {
+    const fsSync = require('fs');
+    const organizedPath = path.join(exportPath, 'export-lisible');
+
+    // Create main organized export directory
+    await ensureDir(organizedPath);
+
+    // Create traces directory
+    const tracesPath = path.join(organizedPath, 'traces');
+    await ensureDir(tracesPath);
+
+    // Sort tracks by creation date
+    const sortedTracks = [...tracks].sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    // Create a directory for each track
+    for (const track of sortedTracks) {
+        // Sanitize track name for folder name
+        const trackName = (track.name || track.title || track.filename.replace('.gpx', ''))
+            .replace(/[/\\:*?"<>|]/g, '_')
+            .substring(0, 100);
+
+        const trackFolder = path.join(tracesPath, trackName);
+        await ensureDir(trackFolder);
+
+        // Copy GPX file
+        const gpxSrc = path.join(__dirname, 'uploads', 'gpx', track.filename);
+        const gpxDest = path.join(trackFolder, 'trace.gpx');
+        try {
+            if (fsSync.existsSync(gpxSrc)) {
+                await fs.copyFile(gpxSrc, gpxDest);
+            }
+        } catch (error) {
+            console.log(`⚠️  GPX file not found: ${track.filename}`);
+        }
+
+        // Create README with track info
+        const trackInfo = [
+            `# ${track.name || track.title || 'Sans titre'}`,
+            '',
+            `**Type:** ${track.type || 'Non défini'}`,
+            `**Direction:** ${track.direction || 'Non défini'}`,
+            `**Distance:** ${track.distance ? (track.distance / 1000).toFixed(2) + ' km' : 'Non calculé'}`,
+            `**Dénivelé:** ${track.elevationGain ? track.elevationGain.toFixed(0) + ' m' : 'Non calculé'}`,
+            `**Durée:** ${track.duration ? (track.duration / 60).toFixed(0) + ' min' : 'Non calculé'}`,
+            `**Complétée:** ${track.completionDate ? new Date(track.completionDate).toLocaleDateString('fr-FR') : 'Non'}`,
+            '',
+            track.labels && track.labels.length > 0 ? `**Labels:** ${track.labels.map(l => l.label.name).join(', ')}` : '',
+            '',
+            track.comments ? `## Commentaires\n\n${track.comments}` : '',
+            '',
+            `---`,
+            `*Créé le ${new Date(track.createdAt).toLocaleDateString('fr-FR')}*`
+        ].filter(line => line !== '').join('\n');
+
+        await fs.writeFile(path.join(trackFolder, 'README.md'), trackInfo);
+
+        // Copy photos
+        if (track.photos && track.photos.length > 0) {
+            const photosFolder = path.join(trackFolder, 'photos');
+            await ensureDir(photosFolder);
+
+            for (let i = 0; i < track.photos.length; i++) {
+                const photo = track.photos[i];
+                const photoSrc = path.join(__dirname, photo.path);
+                if (fsSync.existsSync(photoSrc)) {
+                    const ext = path.extname(photo.filename);
+                    const photoName = `photo-${String(i + 1).padStart(2, '0')}${ext}`;
+                    const photoDest = path.join(photosFolder, photoName);
+                    await fs.copyFile(photoSrc, photoDest);
+                }
+            }
+        }
+    }
+
+    // Create database exports as CSV
+    const databasePath = path.join(organizedPath, 'database');
+    await ensureDir(databasePath);
+
+    // Tracks CSV
+    const tracksCSV = [
+        'ID,Filename,Name,Title,Type,Direction,Color,Distance(m),ElevationGain(m),ElevationLoss(m),Duration(s),CompletionDate,Comments,Labels,CreatedAt,UpdatedAt',
+        ...tracks.map(t => [
+            t.id,
+            `"${t.filename}"`,
+            `"${t.name || ''}"`,
+            `"${t.title || ''}"`,
+            t.type || '',
+            t.direction || '',
+            t.color || '',
+            t.distance || '',
+            t.elevationGain || '',
+            t.elevationLoss || '',
+            t.duration || '',
+            t.completionDate ? new Date(t.completionDate).toISOString() : '',
+            `"${(t.comments || '').replace(/"/g, '""')}"`,
+            `"${t.labels ? t.labels.map(l => l.label.name).join(', ') : ''}"`,
+            new Date(t.createdAt).toISOString(),
+            new Date(t.updatedAt).toISOString()
+        ].join(','))
+    ].join('\n');
+
+    await fs.writeFile(path.join(databasePath, 'tracks.csv'), tracksCSV);
+
+    // Labels CSV
+    const labelsCSV = [
+        'ID,Name,CreatedAt',
+        ...labels.map(l => [
+            l.id,
+            `"${l.name}"`,
+            new Date(l.createdAt).toISOString()
+        ].join(','))
+    ].join('\n');
+
+    await fs.writeFile(path.join(databasePath, 'labels.csv'), labelsCSV);
+
+    // Photos CSV
+    const photosCSV = [
+        'ID,Filename,Name,Path,Latitude,Longitude,TrackID,CreatedAt',
+        ...allPhotos.map(p => [
+            p.id,
+            `"${p.filename}"`,
+            `"${p.name}"`,
+            `"${p.path}"`,
+            p.latitude,
+            p.longitude,
+            p.trackId || '',
+            new Date(p.createdAt).toISOString()
+        ].join(','))
+    ].join('\n');
+
+    await fs.writeFile(path.join(databasePath, 'photos.csv'), photosCSV);
+
+    // Add main README
+    const mainReadme = [
+        '# Memorides Export Lisible',
+        '',
+        `Export créé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
+        '',
+        '## Structure',
+        '',
+        '- **traces/** : Un dossier par trace contenant :',
+        '  - `trace.gpx` : Le fichier GPX de la trace',
+        '  - `README.md` : Informations détaillées sur la trace',
+        '  - `photos/` : Photos associées à la trace (si présentes)',
+        '',
+        '- **database/** : Exports CSV de la base de données :',
+        '  - `tracks.csv` : Liste de toutes les traces',
+        '  - `photos.csv` : Liste de toutes les photos',
+        '  - `labels.csv` : Liste des labels',
+        '',
+        `## Statistiques`,
+        '',
+        `- **${tracks.length}** traces`,
+        `- **${allPhotos.length}** photos`,
+        `- **${labels.length}** labels`,
+        '',
+        '---',
+        '*Généré par Memorides - Backup automatique*'
+    ].join('\n');
+
+    await fs.writeFile(path.join(organizedPath, 'README.md'), mainReadme);
 }
 
 async function uploadToFTP(localFilePath, remoteFileName) {
