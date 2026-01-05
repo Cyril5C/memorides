@@ -6,15 +6,17 @@ Backup automatique hebdomadaire de la base de données de production.
 
 ### Configuration
 
-1. **Ajouter le Railway Token** :
-   ```bash
-   railway login
-   railway token
-   ```
+1. **Créer un Railway Token** :
+   - Aller sur https://railway.app/account/tokens
+   - Cliquer "Create Token"
+   - Nommer : `GitHub Actions Backup`
+   - Copier le token (vous ne pourrez plus le voir après !)
 
 2. **Dans GitHub** → Settings → Secrets and variables → Actions :
+   - Cliquer "New repository secret"
    - Nom : `RAILWAY_TOKEN`
-   - Valeur : Le token obtenu de Railway
+   - Valeur : Coller le token créé
+   - Cliquer "Add secret"
 
 ### Exécution
 

@@ -2,22 +2,18 @@
 
 ## Étape 1 : Obtenir le Railway Token
 
-1. **Installer Railway CLI** (si pas déjà fait) :
-   ```bash
-   npm install -g @railway/cli
-   ```
+1. **Aller sur Railway Dashboard** :
+   - Ouvrir https://railway.app/account/tokens
 
-2. **Se connecter à Railway** :
-   ```bash
-   railway login
-   ```
-   → Une fenêtre de navigateur s'ouvre pour l'authentification
+2. **Créer un nouveau token** :
+   - Cliquer sur **"Create Token"**
+   - **Name** : `GitHub Actions Backup` (ou un nom descriptif)
+   - Cliquer sur **"Create"**
 
-3. **Obtenir le token** :
-   ```bash
-   railway token
-   ```
-   → Copier le token qui s'affiche (format: `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX`)
+3. **Copier le token** :
+   - Le token s'affiche une seule fois (format: `XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX`)
+   - ⚠️ **IMPORTANT** : Copier et sauvegarder immédiatement, vous ne pourrez plus le voir après !
+   - Le token ne devrait pas expirer
 
 ## Étape 2 : Configurer le Secret GitHub
 
@@ -102,9 +98,13 @@ railway whoami
 # Vérifier que le projet Railway est lié
 railway status
 
-# Tester l'export en local
+# Tester l'export en local (nécessite d'être dans le projet)
+railway link
 railway run node export-data-prod.js
 ```
+
+**Note** : Le token créé dans le dashboard Railway est différent du token CLI local.
+Le token du dashboard est utilisé pour GitHub Actions et les intégrations externes.
 
 ## ⚙️ Personnalisation
 
@@ -145,9 +145,9 @@ schedule:
 - Si l'erreur persiste, vérifier les logs de l'étape "Install Railway CLI"
 
 ### Erreur : "Authentication failed"
-- Le token Railway a peut-être expiré
-- Régénérer un nouveau token : `railway token`
-- Mettre à jour le secret GitHub
+- Le token Railway est peut-être invalide
+- Régénérer un nouveau token sur https://railway.app/account/tokens
+- Mettre à jour le secret `RAILWAY_TOKEN` dans GitHub
 
 ### Backup vide ou incomplet
 - Vérifier que le projet Railway est bien accessible
