@@ -25,7 +25,11 @@ jobs:
       - name: Install dependencies (without postinstall)
         run: npm install --ignore-scripts
 
-      - name: Generate Prisma Client
+      - name: Configure Prisma for PostgreSQL
+        run: |
+          sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+
+      - name: Generate Prisma Client for PostgreSQL
         env:
           DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
         run: npx prisma generate
