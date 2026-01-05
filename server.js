@@ -486,6 +486,10 @@ const photosDir = path.join(uploadsDir, 'photos');
 // Serve uploaded files (no authentication required - needed for shared links)
 app.use('/uploads', express.static(uploadsDir));
 
+// Backup endpoint (protected by its own token authentication, must be before requireAuth)
+const { authenticateBackup, handleBackup } = require('./backup-endpoint');
+app.post('/api/backup', authenticateBackup, handleBackup);
+
 // Protect all other routes
 app.use(requireAuth);
 
@@ -556,10 +560,6 @@ const upload = multer({
 });
 
 // Routes
-
-// Backup endpoint (protected by token, not session)
-const { authenticateBackup, handleBackup } = require('./backup-endpoint');
-app.post('/api/backup', authenticateBackup, handleBackup);
 
 // Upload GPX file with metadata
 app.post('/api/gpx/upload', uploadLimiter, upload.single('gpx'), async (req, res) => {
