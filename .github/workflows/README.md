@@ -32,8 +32,10 @@ Backup automatique hebdomadaire de la base de données de production.
 
 ### Contenu du backup
 
-- `database.json` : Export complet de la BDD (traces, labels, photos metadata)
+Le backup inclut **TOUT** :
+- `database.json` : Export complet de la BDD (traces, labels, photos metadata, types)
+- `gpx/` : Tous les fichiers GPX des traces
+- `photos/` : Toutes les photos géotaggées
 - `README.md` : Instructions de restauration
 
-⚠️ **Note** : Les fichiers GPX et photos ne sont pas inclus dans ce backup GitHub Actions.
-Pour un backup complet avec fichiers, utiliser le script local `npm run backup`.
+📦 Le backup est complet et identique à celui généré par `npm run backup`.

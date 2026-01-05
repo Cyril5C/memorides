@@ -9,20 +9,19 @@ Backup automatique hebdomadaire via GitHub Actions.
 **Avantages** :
 - ✅ Gratuit
 - ✅ Automatique (tous les dimanches à 3h)
+- ✅ Backup COMPLET (BDD + GPX + Photos)
 - ✅ Stockage sécurisé sur GitHub
 - ✅ Historique de 90 jours
 
 **Configuration** :
 
-1. Ajouter le token Railway aux secrets GitHub :
-   ```bash
-   # Obtenir le token Railway
-   railway login
-   railway token
-   ```
+1. Créer un token Railway :
+   - Aller sur https://railway.app/account/tokens
+   - Créer un nouveau token nommé "GitHub Actions Backup"
+   - Copier le token
 
 2. Dans GitHub → Settings → Secrets → Actions :
-   - Créer `RAILWAY_TOKEN` avec le token obtenu
+   - Créer `RAILWAY_TOKEN` avec le token copié
 
 3. Le backup s'exécute automatiquement chaque dimanche à 3h (UTC)
 
