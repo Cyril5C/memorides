@@ -1,0 +1,51 @@
+name: Weekly Backup
+
+on:
+  schedule:
+    # Tous les dimanches à 3h du matin (UTC)
+    - cron: '0 3 * * 0'
+  # Permet de lancer manuellement le backup
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run backup export
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "🚀 Starting backup from Railway production..."
+          railway run node export-data-prod.js
+
+      - name: Get backup date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Upload backup artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: memorides-backup-${{ steps.date.outputs.date }}
+          path: exports/memorides-backup-*
+          retention-days: 90
+
+      - name: Send notification on failure
+        if: failure()
+        run: |
+          echo "❌ Backup failed!"
+          # Vous pouvez ajouter une notification (email, Slack, etc.)
