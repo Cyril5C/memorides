@@ -34,6 +34,12 @@ jobs:
           DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
         run: npx prisma generate
 
+      - name: Debug Railway environment
+        run: |
+          echo "🔍 Debugging Railway environment variables..."
+          railway run --service memorides printenv | grep -i database || echo "No DATABASE_URL found"
+          railway run --service memorides printenv | grep -i postgres || echo "No postgres vars found"
+
       - name: Run backup via Railway
         run: |
           echo "🚀 Starting complete backup from Railway production..."
