@@ -30,7 +30,7 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway link 024458df-b6d3-4a4b-a537-bcb583c4502a
+          railway link --project 024458df-b6d3-4a4b-a537-bcb583c4502a --environment production
 
       - name: Run backup export via Railway
         env:
