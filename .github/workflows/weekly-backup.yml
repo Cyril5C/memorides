@@ -18,10 +18,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+      - name: Install Node.js in container
+        run: |
+          apk add --no-cache nodejs npm
 
       - name: Install dependencies (without postinstall)
         run: npm install --ignore-scripts
