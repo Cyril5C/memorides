@@ -7,6 +7,7 @@ const { PrismaClient } = require('@prisma/client');
 const fs = require('fs').promises;
 const path = require('path');
 const archiver = require('archiver');
+const ftp = require('basic-ftp');
 
 const prisma = new PrismaClient();
 
@@ -123,7 +124,70 @@ Voir BACKUP.md dans le repository pour les instructions de restauration.
     await fs.writeFile(path.join(EXPORT_PATH, 'README.md'), readme);
 
     console.log('✅ Backup completed successfully');
-    return { path: EXPORT_PATH, name: EXPORT_NAME };
+
+    // Create ZIP archive
+    const zipPath = `${EXPORT_PATH}.zip`;
+    await createZipArchive(EXPORT_PATH, zipPath);
+    console.log(`📦 ZIP archive created: ${zipPath}`);
+
+    return { path: EXPORT_PATH, name: EXPORT_NAME, zipPath };
+}
+
+async function createZipArchive(sourceDir, outputPath) {
+    const archiver = require('archiver');
+    const fsSync = require('fs');
+
+    return new Promise((resolve, reject) => {
+        const output = fsSync.createWriteStream(outputPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        output.on('close', () => {
+            console.log(`📦 Archive created: ${archive.pointer()} bytes`);
+            resolve();
+        });
+
+        archive.on('error', (err) => reject(err));
+
+        archive.pipe(output);
+        archive.directory(sourceDir, path.basename(sourceDir));
+        archive.finalize();
+    });
+}
+
+async function uploadToFTP(localFilePath, remoteFileName) {
+    const client = new ftp.Client();
+    client.ftp.verbose = true;
+
+    try {
+        console.log('🌐 Connecting to FTP server...');
+        await client.access({
+            host: process.env.FTP_HOST,
+            user: process.env.FTP_USER,
+            password: process.env.FTP_PASSWORD,
+            port: parseInt(process.env.FTP_PORT || '21'),
+            secure: process.env.FTP_SECURE === 'true'
+        });
+
+        console.log(`📤 Uploading ${remoteFileName}...`);
+
+        // Create backups directory if it doesn't exist
+        try {
+            await client.ensureDir('/backups');
+        } catch (error) {
+            console.log('📁 Creating /backups directory...');
+            await client.send('MKD /backups');
+        }
+
+        await client.uploadFrom(localFilePath, `/backups/${remoteFileName}`);
+        console.log(`✅ Upload successful: /backups/${remoteFileName}`);
+
+        return true;
+    } catch (error) {
+        console.error('❌ FTP upload failed:', error.message);
+        throw error;
+    } finally {
+        client.close();
+    }
 }
 
 // Middleware d'authentification
@@ -153,10 +217,27 @@ function authenticateBackup(req, res, next) {
 async function handleBackup(req, res) {
     try {
         const result = await createBackup();
+
+        // Upload to FTP if configured
+        let ftpUploadSuccess = false;
+        if (process.env.FTP_HOST && process.env.FTP_USER && process.env.FTP_PASSWORD) {
+            try {
+                const zipFileName = `${result.name}.zip`;
+                await uploadToFTP(result.zipPath, zipFileName);
+                ftpUploadSuccess = true;
+            } catch (ftpError) {
+                console.error('⚠️  FTP upload failed, but backup was created locally:', ftpError.message);
+                // Don't fail the whole backup if FTP fails
+            }
+        } else {
+            console.log('ℹ️  FTP not configured, skipping upload');
+        }
+
         res.json({
             success: true,
             message: 'Backup created successfully',
             backup: result.name,
+            ftpUpload: ftpUploadSuccess,
             timestamp: new Date().toISOString()
         });
     } catch (error) {

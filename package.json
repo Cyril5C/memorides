@@ -26,6 +26,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "archiver": "^7.0.1",
+    "basic-ftp": "^5.1.0",
     "compression": "^1.8.1",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
