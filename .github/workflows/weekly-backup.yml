@@ -25,11 +25,6 @@ jobs:
       - name: Install dependencies (without postinstall)
         run: npm install --ignore-scripts
 
-      - name: Link Railway project
-        run: |
-          echo "🔗 Linking to Railway project..."
-          railway link --project 024458df-b6d3-4a4b-a537-bcb583c4502a --environment production
-
       - name: Run backup via Railway
         run: |
           echo "🚀 Starting complete backup from Railway production..."
