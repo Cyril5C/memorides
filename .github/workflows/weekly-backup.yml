@@ -26,16 +26,14 @@ jobs:
       - name: Install dependencies (without postinstall)
         run: npm install --ignore-scripts
 
-      - name: Link Railway project
+      - name: Link Railway project and run backup
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
+          echo "🔑 Authenticating with Railway..."
+          export RAILWAY_TOKEN="${RAILWAY_TOKEN}"
+          echo "🔗 Linking Railway project..."
           railway link --project 024458df-b6d3-4a4b-a537-bcb583c4502a --environment production
-
-      - name: Run backup export via Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
           echo "🚀 Starting complete backup from Railway production..."
           echo "📊 Exporting database, GPX files, and photos..."
           railway run --service memorides --environment production node export-data.js
